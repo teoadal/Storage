@@ -185,7 +185,7 @@ public sealed class StorageClient : IDisposable
         var signature = _signature.CalculateSignature(request, payloadHash, S3Headers, now);
         headers.TryAddWithoutValidation("Authorization", _authorization.Build(now, signature));
 
-        return _client.SendAsync(request, cancellation);
+        return _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
     }
 
     private async Task<string?> UploadChunk(

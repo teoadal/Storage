@@ -2,6 +2,24 @@
 
 Привет! Это простейший клиент для работы с S3 хранилищами. Протестировано **только на Minio, без https**. Мотивация создания была простейшей - я не понимал, почему клиенты от AWS и Minio едят так много памяти.
 
+```ini
+BenchmarkDotNet=v0.13.5, OS=Windows 11 (10.0.22621.1265/22H2/2022Update/SunValley2)
+AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
+.NET SDK=7.0.102
+  [Host]   : .NET 7.0.2 (7.0.222.60605), X64 RyuJIT AVX2 DEBUG
+  .NET 7.0 : .NET 7.0.2 (7.0.222.60605), X64 RyuJIT AVX2
+
+Job=.NET 7.0  Runtime=.NET 7.0 
+```
+
+| Method  |    Mean | Ratio |       Gen0 |      Gen1 |      Gen2 |     Allocated | Alloc Ratio |
+|---------|--------:|------:|-----------:|----------:|----------:|--------------:|------------:|
+| Aws     | 2.160 s |  1.65 | 25000.0000 | 8000.0000 |         - |  207325.71 KB |      254.56 |
+| Minio   | 1.280 s |  0.97 |          - |         - |         - |  279978.45 KB |      343.76 |
+| Yandex  | 1.539 s |  1.17 |  1000.0000 | 1000.0000 | 1000.0000 | 1033076.55 KB |    1,268.43 |
+| Storage | 1.318 s |  1.00 |          - |         - |         - |     814.45 KB |        1.00 |
+
+
 ## Создание клиента
 
 Для работы с хранилищем необходимо создать клиент.
@@ -35,6 +53,13 @@ if (bucketCreateResult) Console.WriteLine("Bucket создан")
 ```csharp
 bool bucketCheckResult = await storageClient.BucketExists(CancellationToken.None);
 if (bucketCheckResult) Console.WriteLine("Bucket существует")
+```
+
+### Удаление bucket'a
+
+```csharp
+bool bucketDeleteResult = await storageClient.BucketExists(CancellationToken.None);
+if (bucketDeleteResult) Console.WriteLine("Bucket удалён")
 ```
 
 ## Операции с S3 object

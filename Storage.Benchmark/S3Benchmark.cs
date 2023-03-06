@@ -151,7 +151,7 @@ public class S3Benchmark
     }
 
     [Benchmark(Baseline = true)]
-    public async Task<int> Handmade()
+    public async Task<int> Storage()
     {
         var result = 0;
 
