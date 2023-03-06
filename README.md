@@ -64,7 +64,7 @@ if (bucketCheckResult) Console.WriteLine("Bucket существует")
 ### Удаление bucket'a
 
 ```csharp
-bool bucketDeleteResult = await storageClient.BucketExists(CancellationToken.None);
+bool bucketDeleteResult = await storageClient.DeleteBucket(CancellationToken.None);
 if (bucketDeleteResult) Console.WriteLine("Bucket удалён")
 ```
 
