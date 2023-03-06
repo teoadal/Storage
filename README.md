@@ -108,3 +108,7 @@ if (fileExistsResult) Console.WriteLine("Файл существует")
 bool fileDeleteResult = await storageClient.DeleteFile(fileName, CancellationToken.None);
 if (fileDeleteResult) Console.WriteLine("Файл удалён")
 ```
+
+## Тесты
+
+Как запускать тесты через ``github actions`` пока не придумал. Нужна же minio, а как вставить её я не знаю. Варианты нашёл, читаю.
