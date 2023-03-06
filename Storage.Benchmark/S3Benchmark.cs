@@ -151,7 +151,7 @@ public class S3Benchmark
     }
 
     [Benchmark(Baseline = true)]
-    public async Task<int> Handmade()
+    public async Task<int> Storage()
     {
         var result = 0;
 
@@ -197,7 +197,6 @@ public class S3Benchmark
     private StorageClient _handmadeClient = null!;
     private MinioClient _minioClient = null!;
     private YandexStorageService _yandexClient = null!;
-
 
     [GlobalSetup]
     public void Config()
