@@ -14,13 +14,13 @@ internal readonly struct AuthorizationSignature
     public string Build(DateTime now, string signature)
     {
         Span<char> buffer = stackalloc char[16];
+        var builder = new ValueStringBuilder(stackalloc char[512]);
 
-        return StringUtils
-            .GetBuilder()
-            .Append(_start)
-            .Append(buffer[..StringUtils.Format(ref buffer, now, Signature.Iso8601Date)])
-            .Append(_end)
-            .Append(signature)
-            .Flush();
+        builder.Append(_start);
+        builder.Append(buffer[..StringUtils.Format(ref buffer, now, Signature.Iso8601Date)]);
+        builder.Append(_end);
+        builder.Append(signature);
+
+        return builder.Flush();
     }
 }

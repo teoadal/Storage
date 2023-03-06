@@ -11,12 +11,12 @@ public readonly struct StorageFile : IAsyncDisposable
         get => _response.Content.Headers.ContentType?.MediaType;
     }
 
-    public bool IsSuccess
+    public bool Exists
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _response.IsSuccessStatusCode;
     }
-
+    
     public long? Length
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

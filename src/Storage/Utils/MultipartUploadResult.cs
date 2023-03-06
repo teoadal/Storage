@@ -35,7 +35,7 @@ internal static class MultipartUploadResult
     {
         stream.ReadByte(); // skip <
 
-        var builder = StringUtils.GetBuilder();
+        var builder = new ValueStringBuilder(stackalloc char[128]);
         while (stream.CanRead)
         {
             var ch = (char) stream.ReadByte();

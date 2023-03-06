@@ -11,11 +11,6 @@ internal static class StringUtils
     #region Append
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static StringBuilder Append(this StringBuilder builder, string start, char ch) => builder
-        .Append(start)
-        .Append(ch);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static StringBuilder Append(this StringBuilder builder, string start, int middle, string end) => builder
         .Append(start)
         .Append(middle)

@@ -1,4 +1,5 @@
-﻿using FluentAssertions;
+﻿using System.Net;
+using FluentAssertions;
 using Storage.Tests.Mocks;
 
 namespace Storage.Tests;
@@ -19,14 +20,13 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     [Fact]
     public async Task BeExists()
     {
-        var fileName = _fixture.Create<string>();
-        using var data = StorageFixture.GetByteStream(1 * 1024 * 1024); // 1 Mb
-        await _client.PutFile(fileName, data, StorageFixture.StreamContentType, _cancellation);
-
+        var fileName = await CreateTestFile();
         var fileExistsResult = await _client.FileExists(fileName, _cancellation);
 
         fileExistsResult
             .Should().BeTrue();
+
+        await DeleteTestFile(fileName);
     }
 
     [Fact]
@@ -36,6 +36,66 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 
         fileExistsResult
             .Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DisposeFileStream()
+    {
+        var fileName = await CreateTestFile();
+        await using var fileGetResult = await _client.GetFile(fileName, _cancellation);
+
+        var fileStream = fileGetResult.GetStream();
+        await fileStream.DisposeAsync();
+
+        await DeleteTestFile(fileName);
+    }
+
+    [Fact]
+    public async Task HasValidInformation()
+    {
+        const int length = 1 * 1024 * 1024;
+        const string contentType = "video/mp4";
+
+        var fileName = await CreateTestFile(contentType);
+        await using var fileGetResult = await _client.GetFile(fileName, _cancellation);
+
+        fileGetResult
+            .ContentType
+            .Should().Be(contentType);
+
+        fileGetResult
+            .Exists
+            .Should().BeTrue();
+
+        fileGetResult
+            .Length
+            .Should().Be(length);
+
+        fileGetResult
+            .Status
+            .Should().Be(HttpStatusCode.OK);
+
+        await DeleteTestFile(fileName);
+    }
+
+    [Fact]
+    public async Task HasValidStreamInformation()
+    {
+        const int length = 1 * 1024 * 1024;
+        var fileName = await CreateTestFile(length: length);
+        await using var fileGetResult = await _client.GetFile(fileName, _cancellation);
+
+        var fileStream = fileGetResult.GetStream();
+
+        fileStream.CanRead.Should().BeTrue();
+        fileStream.CanSeek.Should().BeFalse();
+        fileStream.CanWrite.Should().BeFalse();
+        fileStream.Length.Should().Be(length);
+
+        await fileStream.DisposeAsync();
+        await fileStream.DisposeAsync();
+
+        await DeleteTestFile(fileName);
     }
 
     [Fact]
@@ -66,13 +126,17 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
         await DeleteTestFile(fileName);
     }
 
+    private async Task<string> CreateTestFile(string contentType = StorageFixture.StreamContentType, int? length = null)
+    {
+        var fileName = _fixture.Create<string>();
+        using var data = StorageFixture.GetByteStream(length ?? 1 * 1024 * 1024); // 1 Mb
+        await _client.PutFile(fileName, data, contentType, _cancellation);
+        return fileName;
+    }
+
     private async Task EnsureFileSame(string fileName, byte[] expectedBytes)
     {
         await using var getFileResult = await _client.GetFile(fileName, _cancellation);
-
-        getFileResult
-            .IsSuccess
-            .Should().BeTrue();
 
         using var memoryStream = StorageFixture.GetEmptyByteStream(getFileResult.Length);
         await getFileResult.GetStream().CopyToAsync(memoryStream, _cancellation);

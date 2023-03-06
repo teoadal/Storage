@@ -25,7 +25,7 @@ internal sealed class StorageStream : Stream
     public override long Length
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _stream.Length;
+        get => _response.Content.Headers.ContentLength ?? _stream.Length;
     }
 
     public override long Position
@@ -43,14 +43,6 @@ internal sealed class StorageStream : Stream
         _stream = stream;
     }
 
-    public override async ValueTask DisposeAsync()
-    {
-        await _stream.DisposeAsync();
-        _response.Dispose();
-
-        await base.DisposeAsync();
-    }
-
     public override void Flush() => _stream.Flush();
 
     public override int Read(byte[] buffer, int offset, int count) => _stream.Read(buffer, offset, count);
@@ -60,4 +52,10 @@ internal sealed class StorageStream : Stream
     public override void SetLength(long value) => _stream.SetLength(value);
 
     public override void Write(byte[] buffer, int offset, int count) => _stream.Write(buffer, offset, count);
+
+    protected override void Dispose(bool disposing)
+    {
+        _stream.Dispose();
+        _response.Dispose();
+    }
 }

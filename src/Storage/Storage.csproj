@@ -8,12 +8,12 @@
 
     <PropertyGroup>
         <Title>Storage</Title>
-        <Description>Simple storage for S3</Description>
-        <Version>0.5.2</Version>
+        <Description>Simple client for S3-storage</Description>
+        <Version>0.5.3</Version>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>git://github.com/teoadal/Storage</RepositoryUrl>
         <PackageId>Storages3</PackageId>
-        <PackageTags>s3;objectS3, bucketS3, performance</PackageTags>
+        <PackageTags>s3;s3storage;objectS3;bucketS3;performance</PackageTags>
         <PackageProjectUrl>https://github.com/teoadal/Storage</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <Copyright>Kirill Bazhaykin</Copyright>

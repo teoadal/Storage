@@ -252,7 +252,6 @@ internal sealed class Signature
     }
 
     [SuppressMessage("ReSharper", "InvertIf")]
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GetKeyedHash(ref Span<byte> buffer, ReadOnlySpan<byte> key, scoped ReadOnlySpan<char> value)
     {
         var count = Encoding.UTF8.GetByteCount(value);
@@ -302,7 +301,7 @@ internal sealed class Signature
     private static string ToHex(ReadOnlySpan<byte> data)
     {
         Span<char> buffer = stackalloc char[2];
-        var builder = StringUtils.GetBuilder();
+        var builder = new ValueStringBuilder(stackalloc char[64]);
 
         foreach (var element in data)
         {
