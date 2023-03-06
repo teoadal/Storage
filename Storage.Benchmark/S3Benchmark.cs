@@ -198,7 +198,6 @@ public class S3Benchmark
     private MinioClient _minioClient = null!;
     private YandexStorageService _yandexClient = null!;
 
-
     [GlobalSetup]
     public void Config()
     {

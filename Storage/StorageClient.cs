@@ -1,7 +1,6 @@
 ﻿using System.Buffers;
 using System.Globalization;
 using System.Net;
-using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using Storage.Utils;
 
@@ -48,6 +47,13 @@ public sealed class StorageClient : IDisposable
         using var request = CreateRequest(HttpMethod.Head);
         using var response = await Send(request, Signature.EmptyPayloadHash, cancellation);
         return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK};
+    }
+
+    public async Task<bool> DeleteBucket(CancellationToken cancellation)
+    {
+        using var request = CreateRequest(HttpMethod.Delete);
+        using var response = await Send(request, Signature.EmptyPayloadHash, cancellation);
+        return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.NoContent};
     }
 
     public async Task<bool> DeleteFile(string fileName, CancellationToken cancellation)
