@@ -9,7 +9,7 @@
     <PropertyGroup>
         <Title>Storage</Title>
         <Description>Simple storage for S3</Description>
-        <Version>0.5.1</Version>
+        <Version>0.5.2</Version>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>git://github.com/teoadal/Storage</RepositoryUrl>
         <PackageId>Storages3</PackageId>
