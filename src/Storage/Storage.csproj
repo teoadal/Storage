@@ -16,7 +16,6 @@
         <PackageTags>s3;objectS3, bucketS3, performance</PackageTags>
         <PackageProjectUrl>https://github.com/teoadal/Storage</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Copyright>Kirill Bazhaykin</Copyright>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <IncludeSymbols>true</IncludeSymbols>
@@ -25,10 +24,6 @@
 
     <ItemGroup>
         <None Include="..\..\README.md" Pack="true" PackagePath=""/>
-    </ItemGroup>
-    
-    <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.2.0"/>
     </ItemGroup>
 
 </Project>

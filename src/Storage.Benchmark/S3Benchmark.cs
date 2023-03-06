@@ -121,7 +121,7 @@ public class S3Benchmark
         var result = 0;
 
         var bucketExists = await _yandexClient.BucketService.GetBucketMeta(bucket);
-        if (!bucketExists.IsSuccessStatusCode) throw new Exception();
+        if (!bucketExists.IsSuccessStatusCode) ThrowException();
         result++;
 
         var fileNotExists = await objectService.GetAsync(_fileId);

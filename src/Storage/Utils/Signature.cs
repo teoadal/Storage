@@ -5,8 +5,6 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Extensions.Primitives;
 
 namespace Storage.Utils;
 
@@ -120,20 +118,49 @@ internal sealed class Signature
         Interlocked.Exchange(ref _headerSort, sortedHeaders);
     }
 
-    private static void AppendCanonicalQueryParameters(
-        ref ValueStringBuilder builder,
-        Dictionary<string, StringValues> parameters)
+    private static void AppendCanonicalQueryParameters(ref ValueStringBuilder builder, string? query)
     {
-        if (parameters.Count == 0) return;
+        if (string.IsNullOrEmpty(query) || query == "?") return;
 
-        foreach (var (key, value) in parameters)
+        var scanIndex = 0;
+        if (query[0] == '?') scanIndex = 1;
+
+        var textLength = query.Length;
+        var equalIndex = query.IndexOf('=');
+        if (equalIndex == -1) equalIndex = textLength;
+
+        while (scanIndex < textLength)
         {
-            var stringValue = (string?) value ?? string.Empty;
+            var delimiter = query.IndexOf('&', scanIndex);
+            if (delimiter == -1) delimiter = textLength;
 
-            AppendEncodedUrl(ref builder, key);
-            builder.Append('=');
-            AppendEncodedUrl(ref builder, stringValue);
-            builder.Append('&');
+            if (equalIndex < delimiter)
+            {
+                while (scanIndex != equalIndex && char.IsWhiteSpace(query[scanIndex]))
+                {
+                    ++scanIndex;
+                }
+
+                AppendEncodedUrl(ref builder, UnescapeString(query.AsSpan(scanIndex, equalIndex - scanIndex)));
+                builder.Append('=');
+                AppendEncodedUrl(ref builder, UnescapeString(query.AsSpan(equalIndex + 1, delimiter - equalIndex - 1)));
+                builder.Append('&');
+
+                equalIndex = query.IndexOf('=', delimiter);
+                if (equalIndex == -1) equalIndex = textLength;
+            }
+            else
+            {
+                if (delimiter > scanIndex)
+                {
+                    AppendEncodedUrl(ref builder, query.AsSpan(scanIndex, delimiter - scanIndex));
+                    builder.Append('=');
+                    AppendEncodedUrl(ref builder, string.Empty);
+                    builder.Append('&');
+                }
+            }
+
+            scanIndex = delimiter + 1;
         }
 
         builder.RemoveLast();
@@ -156,7 +183,7 @@ internal sealed class Signature
         canonical.Append(uri.AbsolutePath);
         canonical.Append(newLine);
 
-        AppendCanonicalQueryParameters(ref canonical, QueryHelpers.ParseQuery(uri.Query));
+        AppendCanonicalQueryParameters(ref canonical, uri.Query);
         canonical.Append(newLine);
 
         AppendCanonicalHeaders(ref canonical, request, signedHeaders);
@@ -180,7 +207,7 @@ internal sealed class Signature
     }
 
     [SuppressMessage("ReSharper", "InvertIf")]
-    private static void AppendEncodedUrl(ref ValueStringBuilder builder, string url)
+    private static void AppendEncodedUrl(ref ValueStringBuilder builder, ReadOnlySpan<char> url)
     {
         Span<char> charBuffer = stackalloc char[2];
 
@@ -283,5 +310,16 @@ internal sealed class Signature
         }
 
         return builder.Flush();
+    }
+
+    private static string UnescapeString(ReadOnlySpan<char> query)
+    {
+        var data = new ValueStringBuilder(stackalloc char[query.Length]);
+        foreach (var ch in query)
+        {
+            data.Append(ch == '+' ? ' ' : ch);
+        }
+
+        return Uri.UnescapeDataString(data.Flush());
     }
 }
