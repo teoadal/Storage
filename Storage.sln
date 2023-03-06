@@ -1,10 +1,10 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Storage", "Storage\Storage.csproj", "{A44AEC9A-8F03-48EF-8AF4-10C1A5F47E01}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Storage", "src\Storage\Storage.csproj", "{A44AEC9A-8F03-48EF-8AF4-10C1A5F47E01}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Storage.Benchmark", "Storage.Benchmark\Storage.Benchmark.csproj", "{9306915C-AF76-42E9-B94B-CE87E2B341DF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Storage.Benchmark", "src\Storage.Benchmark\Storage.Benchmark.csproj", "{9306915C-AF76-42E9-B94B-CE87E2B341DF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Storage.Tests", "Storage.Tests\Storage.Tests.csproj", "{4CF65AA7-268C-4F47-935F-DD55A1E2A295}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Storage.Tests", "src\Storage.Tests\Storage.Tests.csproj", "{4CF65AA7-268C-4F47-935F-DD55A1E2A295}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
