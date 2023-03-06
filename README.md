@@ -1,3 +1,9 @@
+
+[![Pipeline](https://github.com/teoadal/local/workflows/.NET%20Core/badge.svg?branch=master)](https://github.com/teoadal/storage/actions)
+[![NuGet](https://img.shields.io/nuget/v/storages3.svg)](https://www.nuget.org/packages/Storages3) 
+[![NuGet](https://img.shields.io/nuget/dt/storages3.svg)](https://www.nuget.org/packages/storages3)
+[![CodeFactor](https://www.codefactor.io/repository/github/teoadal/storage/badge)](https://www.codefactor.io/repository/github/teoadal/storage)
+
 # Storage для S3
 
 Привет! Это простейший клиент для работы с S3 хранилищами. Протестировано **только на Minio, без https**. Мотивация создания была простейшей - я не понимал, почему клиенты от [AWS](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html) и [Minio](https://github.com/minio/minio-dotnet) едят так много памяти. Для красоты эксперимента я добавил ещё один клиент, которы нашёл на github - клиент для [Yandex Objects](https://github.com/DubZero/AspNetCore.Yandex.ObjectStorage), который использовать строго не рекомендую.
