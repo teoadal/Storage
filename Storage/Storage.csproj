@@ -4,20 +4,25 @@
         <TargetFramework>net7.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <PropertyGroup>
         <Title>Storage</Title>
         <Description>Simple storage for S3</Description>
         <Version>0.5.0</Version>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>git://github.com/teoadal/Storage</RepositoryUrl>
-        <PackageId>StorageS3</PackageId>
+        <PackageId>storages3</PackageId>
         <PackageTags>s3;objectS3, bucketS3, performance</PackageTags>
         <PackageProjectUrl>https://github.com/teoadal/Storage</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Copyright>Kirill Bazhaykin</Copyright>
+        <PackageReadmeFile>https://github.com/teoadal/Storage/blob/master/README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.2.0" />
+        <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.2.0"/>
     </ItemGroup>
 
 </Project>
