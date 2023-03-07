@@ -4,7 +4,7 @@
 [![NuGet](https://img.shields.io/nuget/dt/Storages3.svg)](https://www.nuget.org/packages/Storages3)
 [![CodeFactor](https://www.codefactor.io/repository/github/teoadal/storage/badge)](https://www.codefactor.io/repository/github/teoadal/storage)
 
-# Client для S3
+# Клиент для S3
 
 Привет! Это объёртка над HttpClient для работы с S3 хранилищами. **Протестировано только на Minio, без https**. Мотивация создания была простейшей - я не понимал, почему клиенты от [AWS](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html) и [Minio](https://github.com/minio/minio-dotnet) едят так много памяти. Для красоты эксперимента я добавил ещё один клиент, который нашёл на github - клиент для [Yandex Objects](https://github.com/DubZero/AspNetCore.Yandex.ObjectStorage), который использовать строго не рекомендую. Результат моих экспериментов: скорость почти как у Minio, а памяти потребляю почти в 200 раз меньше.
 
