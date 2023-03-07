@@ -4,9 +4,9 @@
 [![NuGet](https://img.shields.io/nuget/dt/Storages3.svg)](https://www.nuget.org/packages/Storages3)
 [![CodeFactor](https://www.codefactor.io/repository/github/teoadal/storage/badge)](https://www.codefactor.io/repository/github/teoadal/storage)
 
-# Storage для S3
+# Client для S3
 
-Привет! Это простейший клиент для работы с S3 хранилищами. Протестировано **только на Minio, без https**. Мотивация создания была простейшей - я не понимал, почему клиенты от [AWS](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html) и [Minio](https://github.com/minio/minio-dotnet) едят так много памяти. Для красоты эксперимента я добавил ещё один клиент, который нашёл на github - клиент для [Yandex Objects](https://github.com/DubZero/AspNetCore.Yandex.ObjectStorage), который использовать строго не рекомендую. Результат моих экспериментов: скорость почти как у Minio, а памяти потребляю почти в 200 раз меньше.
+Привет! Это объёртка над HttpClient для работы с S3 хранилищами. **Протестировано только на Minio, без https**. Мотивация создания была простейшей - я не понимал, почему клиенты от [AWS](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html) и [Minio](https://github.com/minio/minio-dotnet) едят так много памяти. Для красоты эксперимента я добавил ещё один клиент, который нашёл на github - клиент для [Yandex Objects](https://github.com/DubZero/AspNetCore.Yandex.ObjectStorage), который использовать строго не рекомендую. Результат моих экспериментов: скорость почти как у Minio, а памяти потребляю почти в 200 раз меньше.
 
 ```ini
 BenchmarkDotNet=v0.13.5, OS=Windows 11 (10.0.22621.1265/22H2/2022Update/SunValley2)
@@ -48,7 +48,7 @@ var storageClient = new StorageClient(new StorageSettings
 Мы передаём название bucket'a в настройках, поэтому дополнительно его вводить не надо.
 
 ```csharp
-bool bucketCreateResult = await storageClient.CreateBucket(CancellationToken.None);
+bool bucketCreateResult = await storageClient.CreateBucket(cancellationToken);
 if (bucketCreateResult) Console.WriteLine("Bucket создан")
 ```
 
@@ -57,14 +57,14 @@ if (bucketCreateResult) Console.WriteLine("Bucket создан")
 Как и в прошлый раз, мы знаем название bucket'a, так как мы передаём его в настройках клиента.
 
 ```csharp
-bool bucketCheckResult = await storageClient.BucketExists(CancellationToken.None);
+bool bucketCheckResult = await storageClient.BucketExists(cancellationToken);
 if (bucketCheckResult) Console.WriteLine("Bucket существует")
 ```
 
 ### Удаление bucket'a
 
 ```csharp
-bool bucketDeleteResult = await storageClient.DeleteBucket(CancellationToken.None);
+bool bucketDeleteResult = await storageClient.DeleteBucket(cancellationToken);
 if (bucketDeleteResult) Console.WriteLine("Bucket удалён")
 ```
 
@@ -74,10 +74,10 @@ if (bucketDeleteResult) Console.WriteLine("Bucket удалён")
 
 ### Создание
 
-Создание, то есть загрузка файла в S3 хранилище, возможна двумя путями: с разбиением исходных данных на кусочки (multipart) и без этого. Самый простой способ загрузки файла, это воспользоваться сделующим методом (если файл будет больше 5 МБ, то применяется multipart): 
+Создание, то есть загрузка файла в S3 хранилище, возможна двумя путями: можно разбить исходные данных на кусочки (multipart), а можно не разбивать. Самый простой способ загрузки файла - воспользоваться следующим методом (если файл будет больше 5 МБ, то применяется multipart): 
 
 ```csharp
-bool fileUploadResult = await storageClient.UploadFile(fileName, fileStream, fileContentType, CancellationToken.None);
+bool fileUploadResult = await storageClient.UploadFile(fileName, fileStream, fileContentType, cancellationToken);
 if (fileUploadResult) Console.WriteLine("Файл загружен")
 ```
 
@@ -86,7 +86,7 @@ if (fileUploadResult) Console.WriteLine("Файл загружен")
 Можно принудительно загружать файл без multipart. Есть сигнатура и для ``byte[]``. 
 
 ```csharp
-bool fileUploadResult = await storageClient.PutFile(fileName, byteArray, fileContentType, CancellationToken.None);
+bool fileUploadResult = await storageClient.PutFile(fileName, byteArray, fileContentType, cancellationToken);
 if (fileUploadResult) Console.WriteLine("Файл загружен")
 ```
 
@@ -95,14 +95,14 @@ if (fileUploadResult) Console.WriteLine("Файл загружен")
 Можно принудительно загружать файл с использованием multipart. В этом случае нужно будет явно указать размер одного кусочка (не менее 5 МБ).
 
 ```csharp
-bool fileUploadResult = await storageClient.PutFileMultipart(fileName, fileStream, fileContentType, partSize, CancellationToken.None);
+bool fileUploadResult = await storageClient.PutFileMultipart(fileName, fileStream, fileContentType, partSize, cancellationToken);
 if (fileUploadResult) Console.WriteLine("Файл загружен")
 ```
 
 ### Получение
 
 ```csharp
-StorageFile fileGetResult = await storageClient.GetFile(fileName, CancellationToken.None);
+StorageFile fileGetResult = await storageClient.GetFile(fileName, cancellationToken);
 if (fileGetResult.Exists) {
     Console.WriteLine($"Размер файла {fileGetResult.Length}, контент {fileGetResult.ContetType}");
     return fileGetResult.GetStream();
@@ -112,13 +112,13 @@ if (fileGetResult.Exists) {
 ### Проверка существования
 
 ```csharp
-bool fileExistsResult = await storageClient.FileExists(fileName, CancellationToken.None);
+bool fileExistsResult = await storageClient.FileExists(fileName, cancellationToken);
 if (fileExistsResult) Console.WriteLine("Файл существует")
 ```
 
 ### Создание подписанной ссылки
 
-Метод проверяет наличие файла в хранилище S3 и формирует GET запрос файла:
+Метод проверяет наличие файла в хранилище S3 и формирует GET запрос файла. Параметр `expiration` должен содержать время валидности ссылки начиная с даты формирования ссылки.
 
 ```csharp
 string preSignedFileUrl = storageClient.BuildFileUrl(fileName, expiration);
@@ -127,7 +127,7 @@ string preSignedFileUrl = storageClient.BuildFileUrl(fileName, expiration);
 Если необходимо создать ссылку без проверки наличия файла в S3:
 
 ```csharp
-string? preSignedFileUrl = await storageClient.CreateFileUrl(fileName, expiration, CancellationToken.None);
+string? preSignedFileUrl = await storageClient.CreateFileUrl(fileName, expiration, cancellationToken);
 if (preSignedFileUrl != null) Console.WriteLine("URL получен")
 ```
 
@@ -136,7 +136,7 @@ if (preSignedFileUrl != null) Console.WriteLine("URL получен")
 Удаление объекта из S3 происходит почти мгновенно. Такое ощущение, что просто ставится задача на удаление и клиенту возвращается результат.
 
 ```csharp
-bool fileDeleteResult = await storageClient.DeleteFile(fileName, CancellationToken.None);
+bool fileDeleteResult = await storageClient.DeleteFile(fileName, cancellationToken);
 if (fileDeleteResult) Console.WriteLine("Файл удалён")
 ```
 
