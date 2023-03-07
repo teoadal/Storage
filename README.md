@@ -1,5 +1,5 @@
 
-[![Pipeline](https://github.com/teoadal/local/workflows/.NET%20Core/badge.svg?branch=master)](https://github.com/teoadal/storage/actions)
+[![Pipeline](https://github.com/teoadal/storage/workflows/.NET%20Core/badge.svg?branch=master)](https://github.com/teoadal/storage/actions)
 [![NuGet](https://img.shields.io/nuget/v/Storages3.svg)](https://www.nuget.org/packages/Storages3) 
 [![NuGet](https://img.shields.io/nuget/dt/Storages3.svg)](https://www.nuget.org/packages/Storages3)
 [![CodeFactor](https://www.codefactor.io/repository/github/teoadal/storage/badge)](https://www.codefactor.io/repository/github/teoadal/storage)
