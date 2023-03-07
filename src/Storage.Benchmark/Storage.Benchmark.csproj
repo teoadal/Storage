@@ -15,7 +15,6 @@
 
     <ItemGroup>
         <PackageReference Include="Minio" Version="4.0.7"/>
-        <PackageReference Include="AspNetCore.Yandex.ObjectStorage" Version="0.2.2"/>
         <PackageReference Include="AWSSDK.S3" Version="3.7.103.21"/>
     </ItemGroup>
 

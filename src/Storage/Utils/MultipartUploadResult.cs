@@ -15,7 +15,12 @@ internal static class MultipartUploadResult
             {
                 if (ch == PropertyName[expectedIndex])
                 {
-                    if (++expectedIndex == PropertyName.Length) return ReadUploadId(stream);
+                    if (++expectedIndex == PropertyName.Length)
+                    {
+                        var result = ReadUploadId(stream);
+                        stream.Dispose();
+                        return result;
+                    }
                 }
                 else
                 {

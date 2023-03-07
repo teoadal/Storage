@@ -27,8 +27,6 @@ internal sealed class Signature
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string GetPayloadHash(string data) => Sha256ToHex(data);
 
-    private static readonly HashSet<char> ValidUrlCharacters =
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~".ToHashSet();
 
     private static SortedDictionary<string, string>? _headerSort = new();
     private readonly string _region;
@@ -175,7 +173,7 @@ internal sealed class Signature
 
         canonical.Append(request.Method.Method);
         canonical.Append(newLine);
-        canonical.Append(uri.LocalPath);
+        canonical.Append(uri.AbsolutePath);
         canonical.Append(newLine);
 
         AppendCanonicalQueryParameters(ref canonical, uri.Query);
@@ -207,7 +205,7 @@ internal sealed class Signature
 
         var canonical = new ValueStringBuilder(stackalloc char[256]);
         canonical.Append("GET\n"); // canonical request
-        canonical.Append(uri.LocalPath);
+        canonical.Append(uri.AbsolutePath);
         canonical.Append('\n');
         canonical.Append(uri.Query.AsSpan(1));
         canonical.Append('\n');
@@ -234,9 +232,11 @@ internal sealed class Signature
         if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
         {
             Encoding.UTF8.GetBytes(url, segment);
+
+            var validUrlCharacters = HttpHelper.ValidUrlCharacters;
             foreach (char symbol in segment)
             {
-                if (ValidUrlCharacters.Contains(symbol))
+                if (validUrlCharacters.Contains(symbol))
                 {
                     builder.Append(symbol);
                 }

@@ -3,8 +3,6 @@ using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
-using AspNetCore.Yandex.ObjectStorage;
-using AspNetCore.Yandex.ObjectStorage.Configuration;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using Minio;
@@ -112,75 +110,42 @@ public class S3Benchmark
         return ++result;
     }
 
-    [Benchmark]
-    public async Task<int> Yandex()
-    {
-        var bucket = _settings.Bucket;
-        var objectService = _yandexClient.ObjectService;
-
-        var result = 0;
-
-        var bucketExists = await _yandexClient.BucketService.GetBucketMeta(bucket);
-        if (!bucketExists.IsSuccessStatusCode) ThrowException();
-        result++;
-
-        var fileNotExists = await objectService.GetAsync(_fileId);
-        if (fileNotExists.IsSuccessStatusCode) ThrowException();
-        result++;
-
-        _inputData.Seek(0, SeekOrigin.Begin);
-        var fileUpload = await objectService.PutAsync(_inputData, _fileId);
-        if (!fileUpload.IsSuccessStatusCode) ThrowException();
-        result++;
-
-        var fileExists = await objectService.GetAsync(_fileId);
-        if (!fileExists.IsSuccessStatusCode) ThrowException();
-        result++;
-
-        _outputData.Seek(0, SeekOrigin.Begin);
-        var fileDownload = await objectService.GetAsync(_fileId);
-        var fileDownloadStream = await fileDownload.ReadAsStreamAsync();
-        if (fileDownloadStream.IsFailed) ThrowException();
-        await fileDownloadStream.Value!.CopyToAsync(_outputData, _cancellation);
-        result++;
-
-        var fileDelete = await objectService.DeleteAsync(_fileId);
-        if (!fileDelete.IsSuccessStatusCode) ThrowException();
-
-        return ++result;
-    }
-
     [Benchmark(Baseline = true)]
     public async Task<int> Storage()
     {
         var result = 0;
 
-        if (!await _handmadeClient.BucketExists(_cancellation)) ThrowException();
+        var bucketExistsResult = await _handmadeClient.BucketExists(_cancellation);
+        if (!bucketExistsResult) ThrowException();
         result++;
 
-        if (await _handmadeClient.FileExists(_fileId, _cancellation)) ThrowException();
+        var fileExistsResult = await _handmadeClient.FileExists(_fileId, _cancellation);
+        if (fileExistsResult) ThrowException();
         result++;
 
         _inputData.Seek(0, SeekOrigin.Begin);
-        if (!await _handmadeClient.UploadFile(_fileId, _inputData, "application/pdf", _cancellation))
-        {
-            ThrowException();
-        }
+        var fileUploadResult = await _handmadeClient.UploadFile(_fileId, _inputData, "application/pdf", _cancellation);
+        if (!fileUploadResult) ThrowException();
 
         result++;
 
-        if (!await _handmadeClient.FileExists(_fileId, _cancellation)) ThrowException();
+        fileExistsResult = await _handmadeClient.FileExists(_fileId, _cancellation);
+        if (!fileExistsResult) ThrowException();
         result++;
 
         _outputData.Seek(0, SeekOrigin.Begin);
         var storageFile = await _handmadeClient.GetFile(_fileId, _cancellation);
+        if (!storageFile) ThrowException(storageFile.ToString());
+
         await storageFile
             .GetStream()
             .CopyToAsync(_outputData, _cancellation);
 
+        await storageFile.DisposeAsync();
+
         result++;
 
-        if (!await _handmadeClient.DeleteFile(_fileId, _cancellation)) ThrowException();
+        await _handmadeClient.DeleteFile(_fileId, _cancellation);
         return ++result;
     }
 
@@ -196,7 +161,6 @@ public class S3Benchmark
     private TransferUtility _amazonTransfer = null!;
     private StorageClient _handmadeClient = null!;
     private MinioClient _minioClient = null!;
-    private YandexStorageService _yandexClient = null!;
 
     [GlobalSetup]
     public void Config()
@@ -235,15 +199,6 @@ public class S3Benchmark
             .WithCredentials(_settings.AccessKey, _settings.SecretKey)
             .WithSSL(_settings.UseHttps)
             .Build();
-
-        _yandexClient = new YandexStorageService(new YandexStorageOptions
-        {
-            AccessKey = _settings.AccessKey,
-            BucketName = _settings.Bucket,
-            Endpoint = $"{_settings.EndPoint}:{_settings.Port}",
-            Protocol = "http",
-            SecretKey = _settings.SecretKey
-        });
     }
 
     [GlobalCleanup]
@@ -254,7 +209,7 @@ public class S3Benchmark
         _outputData.Dispose();
     }
 
-    private static void ThrowException() => throw new Exception();
+    private static void ThrowException(string? message = null) => throw new Exception(message);
 
     #endregion
 }

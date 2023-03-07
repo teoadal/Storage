@@ -1,9 +1,11 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
 using System.Runtime.CompilerServices;
 
 namespace Storage;
 
-public readonly struct StorageFile : IAsyncDisposable
+[DebuggerDisplay("{ToString()}")]
+public readonly struct StorageFile : IAsyncDisposable, IDisposable
 {
     public string? ContentType
     {
@@ -16,14 +18,14 @@ public readonly struct StorageFile : IAsyncDisposable
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _response.IsSuccessStatusCode;
     }
-    
+
     public long? Length
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _response.Content.Headers.ContentLength;
     }
 
-    public HttpStatusCode Status
+    public HttpStatusCode StatusCode
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _response.StatusCode;
@@ -42,9 +44,29 @@ public readonly struct StorageFile : IAsyncDisposable
         ? new StorageStream(_response, _stream)
         : _stream;
 
+    public void Dispose()
+    {
+        _response.Dispose();
+        _stream.Dispose();
+    }
+
     public ValueTask DisposeAsync()
     {
         _response.Dispose();
         return _stream.DisposeAsync();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator bool(StorageFile file) => file._response.IsSuccessStatusCode;
+
+    public override string ToString()
+    {
+        if (_response.IsSuccessStatusCode) return $"OK (Length = {Length})";
+
+        var reasonPhrase = _response.ReasonPhrase;
+        var statusCode = _response.StatusCode;
+        return string.IsNullOrEmpty(reasonPhrase)
+            ? $"{statusCode} ({(int) statusCode})"
+            : $"{statusCode} ({(int) statusCode}, '{reasonPhrase}')";
     }
 }

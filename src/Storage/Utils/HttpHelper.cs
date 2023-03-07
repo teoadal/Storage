@@ -1,7 +1,42 @@
-﻿namespace Storage.Utils;
+﻿using System.Buffers;
+using System.Runtime.InteropServices;
+using System.Text;
+
+namespace Storage.Utils;
 
 internal readonly struct HttpHelper
 {
+    public static readonly HashSet<char> ValidUrlCharacters =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~".ToHashSet();
+
+    public static void AppendEncodedName(ref ValueStringBuilder builder, string fileName)
+    {
+        Span<char> charBuffer = stackalloc char[2];
+        Span<char> upperBuffer = stackalloc char[2];
+
+        var count = Encoding.UTF8.GetByteCount(fileName);
+        using var memory = MemoryPool<byte>.Shared.Rent(count);
+        if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
+        {
+            Encoding.UTF8.GetBytes(fileName, segment);
+            foreach (char symbol in segment)
+            {
+                if (ValidUrlCharacters.Contains(symbol))
+                {
+                    builder.Append(symbol);
+                }
+                else
+                {
+                    builder.Append('%');
+
+                    StringUtils.FormatX2(ref charBuffer, symbol);
+                    MemoryExtensions.ToUpperInvariant(charBuffer, upperBuffer);
+                    builder.Append(upperBuffer);
+                }
+            }
+        }
+    }
+
     private readonly string _headerEnd;
     private readonly string _headerStart;
 
@@ -37,7 +72,8 @@ internal readonly struct HttpHelper
 
         builder.Append(bucket);
         builder.Append('/');
-        builder.Append(fileName);
+
+        AppendEncodedName(ref builder, fileName);
 
         builder.Append(_urlStart);
         builder.Append(dateBuffer[..StringUtils.Format(ref dateBuffer, now, Signature.Iso8601Date)]);
@@ -51,5 +87,46 @@ internal readonly struct HttpHelper
         builder.Append($"&X-Amz-SignedHeaders=host");
 
         return builder.Flush();
+    }
+
+    public static string EncodeName(string fileName)
+    {
+        Span<char> charBuffer = stackalloc char[2];
+        Span<char> upperBuffer = stackalloc char[2];
+
+        var builder = StringUtils.GetBuilder();
+        var count = Encoding.UTF8.GetByteCount(fileName);
+        var encoded = false;
+
+        using var memory = MemoryPool<byte>.Shared.Rent(count);
+        if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
+        {
+            Encoding.UTF8.GetBytes(fileName, segment);
+            foreach (char symbol in segment)
+            {
+                if (ValidUrlCharacters.Contains(symbol))
+                {
+                    builder.Append(symbol);
+                }
+                else
+                {
+                    builder.Append('%');
+
+                    StringUtils.FormatX2(ref charBuffer, symbol);
+                    MemoryExtensions.ToUpperInvariant(charBuffer, upperBuffer);
+                    builder.Append(upperBuffer);
+
+                    encoded = true;
+                }
+            }
+        }
+
+        if (encoded)
+        {
+            return builder.Flush();
+        }
+
+        builder.Return();
+        return fileName;
     }
 }

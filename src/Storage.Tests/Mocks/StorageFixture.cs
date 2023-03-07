@@ -12,7 +12,7 @@ public sealed class StorageFixture : IDisposable
     public readonly StorageClient StorageClient;
     public readonly StorageSettings Settings;
 
-    private const int DefaultByteArraySize = 7 * 1024 * 1024; //7Mb
+    private const int DefaultByteArraySize = 1 * 1024 * 1024; //7Mb
     private Fixture? _fixture;
 
     public StorageFixture()
@@ -28,7 +28,7 @@ public sealed class StorageFixture : IDisposable
         };
 
         HttpClient = new HttpClient();
-        StorageClient = new StorageClient(Settings, HttpClient);
+        StorageClient = new StorageClient(Settings);
     }
 
     public T Create<T>() => Mocks.Create<T>();
