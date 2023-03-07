@@ -9,16 +9,12 @@ internal ref struct ValueStringBuilder
     private Span<char> _buffer;
     private int _length;
 
-    #region Constructors
-
     public ValueStringBuilder(Span<char> buffer)
     {
         _array = null;
         _buffer = buffer;
         _length = 0;
     }
-
-    #endregion
 
     public readonly int Length
     {
@@ -43,6 +39,19 @@ internal ref struct ValueStringBuilder
         }
     }
 
+    public void Append(int value)
+    {
+        Span<char> buffer = stackalloc char[10];
+        var pos = _length;
+        if (value.TryFormat(buffer, out var written))
+        {
+            if (pos > _buffer.Length - written) Grow(written);
+            buffer.CopyTo(_buffer[pos..]);
+            _length = pos + written;
+        }
+        else Errors.CantFormatToString(value);
+    }
+    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Append(string? s)
     {

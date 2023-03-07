@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Net;
 using System.Runtime.CompilerServices;
+using System.Text;
 using Storage.Utils;
 
 namespace Storage;
@@ -20,7 +21,7 @@ public sealed class StorageClient : IDisposable
     private readonly string _bucket;
     private readonly string _endpoint;
 
-    private readonly AuthorizationSignature _authorization;
+    private readonly HttpHelper _http;
     private readonly HttpClient _client;
     private readonly Signature _signature;
 
@@ -28,11 +29,22 @@ public sealed class StorageClient : IDisposable
     {
         var scheme = settings.UseHttps ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
 
-        _authorization = new AuthorizationSignature(settings.AccessKey, settings.Region, settings.Service, S3Headers);
         _bucket = $"{scheme}://{settings.EndPoint}:{settings.Port}/{settings.Bucket}";
         _client = client ?? new HttpClient();
         _endpoint = $"{settings.EndPoint}:{settings.Port}";
+        _http = new HttpHelper(settings.AccessKey, settings.Region, settings.Service, S3Headers);
         _signature = new Signature(settings.SecretKey, settings.Region, settings.Service);
+    }
+
+    public string BuildFileUrl(string fileName, TimeSpan expiration)
+    {
+        var expires = expiration.TotalSeconds.ToString(CultureInfo.InvariantCulture);
+        var now = DateTime.UtcNow;
+
+        var url = _http.BuildUrl(_bucket, fileName, now, expires);
+        var signature = _signature.CalculateUrlSignature(url, now);
+
+        return $"{url}&X-Amz-Signature={signature}";
     }
 
     public async Task<bool> CreateBucket(CancellationToken cancellation)
@@ -83,6 +95,13 @@ public sealed class StorageClient : IDisposable
 
         response.Dispose();
         return new StorageFile(response, Stream.Null);
+    }
+
+    public async Task<string?> GetFileUrl(string fileName, TimeSpan expiration, CancellationToken cancellation)
+    {
+        return await FileExists(fileName, cancellation)
+            ? BuildFileUrl(fileName, expiration)
+            : null;
     }
 
     public async Task<bool> PutFile(string fileName, Stream data, string contentType, CancellationToken cancellation)
@@ -178,12 +197,12 @@ public sealed class StorageClient : IDisposable
         var headers = request.Headers;
         var now = DateTime.UtcNow;
 
-        headers.Add("Host", _endpoint);
-        headers.Add("X-Amz-Content-Sha256", payloadHash);
-        headers.Add("X-Amz-Date", now.ToString(Signature.Iso8601DateTime, CultureInfo.InvariantCulture));
+        headers.Add("host", _endpoint);
+        headers.Add("x-amz-content-sha256", payloadHash);
+        headers.Add("x-amz-date", now.ToString(Signature.Iso8601DateTime, CultureInfo.InvariantCulture));
 
-        var signature = _signature.CalculateSignature(request, payloadHash, S3Headers, now);
-        headers.TryAddWithoutValidation("Authorization", _authorization.Build(now, signature));
+        var signature = _signature.CalculateRequestSignature(request, payloadHash, S3Headers, now);
+        headers.TryAddWithoutValidation("Authorization", _http.BuildHeader(now, signature));
 
         return _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
     }
@@ -227,7 +246,7 @@ public sealed class StorageClient : IDisposable
             .Append("</CompleteMultipartUpload>")
             .Flush();
 
-        using var content = new StringContent(data);
+        using var content = new StringContent(data, Encoding.UTF8);
         request.Content = content;
 
         using var response = await Send(request, Signature.GetPayloadHash(data), cancellation);

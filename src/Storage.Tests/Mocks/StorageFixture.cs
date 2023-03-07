@@ -8,7 +8,8 @@ public sealed class StorageFixture : IDisposable
 
     public Fixture Mocks => _fixture ??= new Fixture();
 
-    public readonly StorageClient Client;
+    public readonly HttpClient HttpClient;
+    public readonly StorageClient StorageClient;
     public readonly StorageSettings Settings;
 
     private const int DefaultByteArraySize = 7 * 1024 * 1024; //7Mb
@@ -26,7 +27,8 @@ public sealed class StorageFixture : IDisposable
             UseHttps = false
         };
 
-        Client = new StorageClient(Settings);
+        HttpClient = new HttpClient();
+        StorageClient = new StorageClient(Settings, HttpClient);
     }
 
     public T Create<T>() => Mocks.Create<T>();
@@ -52,6 +54,7 @@ public sealed class StorageFixture : IDisposable
 
     public void Dispose()
     {
-        Client.Dispose();
+        StorageClient.Dispose();
+        HttpClient.Dispose();
     }
 }

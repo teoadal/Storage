@@ -72,7 +72,7 @@ if (bucketDeleteResult) Console.WriteLine("Bucket удалён")
 
 Напомню, что объект в смысле S3 это и есть файл.
 
-### Создание object'a
+### Создание
 
 Создание, то есть загрузка файла в S3 хранилище, возможна двумя путями: с разбиением исходных данных на кусочки (multipart) и без этого. Самый простой способ загрузки файла, это воспользоваться сделующим методом (если файл будет больше 5 МБ, то применяется multipart): 
 
@@ -81,7 +81,7 @@ bool fileUploadResult = await storageClient.UploadFile(fileName, fileStream, fil
 if (fileUploadResult) Console.WriteLine("Файл загружен")
 ```
 
-#### Создание S3 объекта без Multipart
+#### Создание без Multipart
 
 Можно принудительно загружать файл без multipart. Есть сигнатура и для ``byte[]``. 
 
@@ -90,7 +90,7 @@ bool fileUploadResult = await storageClient.PutFile(fileName, byteArray, fileCon
 if (fileUploadResult) Console.WriteLine("Файл загружен")
 ```
 
-#### Создание S3 объекта с использованием Multipart
+#### Создание с использованием Multipart
 
 Можно принудительно загружать файл с использованием multipart. В этом случае нужно будет явно указать размер одного кусочка (не менее 5 МБ).
 
@@ -99,14 +99,39 @@ bool fileUploadResult = await storageClient.PutFileMultipart(fileName, fileStrea
 if (fileUploadResult) Console.WriteLine("Файл загружен")
 ```
 
-### Проверка существования object'a
+### Получение
+
+```csharp
+StorageFile fileGetResult = await storageClient.GetFile(fileName, CancellationToken.None);
+if (fileGetResult.Exists) {
+    Console.WriteLine($"Размер файла {fileGetResult.Length}, контент {fileGetResult.ContetType}");
+    return fileGetResult.GetStream();
+}
+```
+
+### Проверка существования
 
 ```csharp
 bool fileExistsResult = await storageClient.FileExists(fileName, CancellationToken.None);
 if (fileExistsResult) Console.WriteLine("Файл существует")
 ```
 
-### Удаление object'a
+### Создание подписанной ссылки
+
+Метод проверяет наличие файла в хранилище S3 и формирует GET запрос файла:
+
+```csharp
+string preSignedFileUrl = storageClient.BuildFileUrl(fileName, expiration);
+```
+
+Если необходимо создать ссылку без проверки наличия файла в S3:
+
+```csharp
+string? preSignedFileUrl = await storageClient.CreateFileUrl(fileName, expiration, CancellationToken.None);
+if (preSignedFileUrl != null) Console.WriteLine("URL получен")
+```
+
+### Удаление
 
 Удаление объекта из S3 происходит почти мгновенно. Такое ощущение, что просто ставится задача на удаление и клиенту возвращается результат.
 

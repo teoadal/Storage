@@ -13,7 +13,7 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     public ObjectShould(StorageFixture fixture)
     {
         _cancellation = CancellationToken.None;
-        _client = fixture.Client;
+        _client = fixture.StorageClient;
         _fixture = fixture;
     }
 
@@ -48,6 +48,24 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
         await fileStream.DisposeAsync();
 
         await DeleteTestFile(fileName);
+    }
+
+    [Fact]
+    public async Task GetFileUrl()
+    {
+        var fileName = await CreateTestFile();
+
+        var url = await _client.GetFileUrl(fileName, TimeSpan.FromSeconds(600), _cancellation);
+
+        url.Should().NotBeNull();
+        
+        using var response = await _fixture.HttpClient.GetAsync(url, _cancellation);
+        
+        await DeleteTestFile(fileName);
+
+        response
+            .IsSuccessStatusCode
+            .Should().BeTrue(response.ReasonPhrase);
     }
 
     [Fact]

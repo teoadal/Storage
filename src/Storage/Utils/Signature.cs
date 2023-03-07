@@ -33,50 +33,48 @@ internal sealed class Signature
     private static SortedDictionary<string, string>? _headerSort = new();
     private readonly string _region;
     private readonly byte[] _secretKey;
+    private readonly string _scope;
     private readonly string _service;
-    private readonly string _signaturePart;
 
     public Signature(string secretKey, string region, string service)
     {
         _region = region;
         _secretKey = Encoding.UTF8.GetBytes($"AWS4{secretKey}");
+        _scope = $"/{region}/{service}/aws4_request\n";
         _service = service;
-        _signaturePart = $"/{region}/{service}/aws4_request\n";
     }
 
-    /// <summary>
-    /// Calculates request signature string using Signature Version 4.
-    /// http://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html
-    /// </summary>
-    public string CalculateSignature(
-        HttpRequestMessage request, string payloadHash,
-        string[] signedHeaders, DateTime requestDate)
+    public string CalculateRequestSignature(HttpRequestMessage request,
+        string payload, string[] signedHeaders, DateTime requestDate)
     {
-        Span<char> dateBuffer = stackalloc char[16];
-        var builder = new ValueStringBuilder(stackalloc char[256]);
+        var builder = new ValueStringBuilder(stackalloc char[512]);
 
-        builder.Append("AWS4-HMAC-SHA256\n");
-        builder.Append(dateBuffer[..StringUtils.Format(ref dateBuffer, requestDate, Iso8601DateTime)]);
-        builder.Append('\n');
+        AppendStringToSign(ref builder, requestDate);
+        AppendCanonicalRequestHash(ref builder, request, signedHeaders, payload);
 
-        var formattedDate = dateBuffer[..StringUtils.Format(ref dateBuffer, requestDate, Iso8601Date)];
+        Span<byte> signature = stackalloc byte[32];
+        CreateSigningKey(ref signature, requestDate);
 
-        builder.Append(formattedDate);
-        builder.Append(_signaturePart);
-
-        AppendCanonicalRequestHash(ref builder, request, signedHeaders, payloadHash);
-
-        Span<byte> buffer = stackalloc byte[32];
-
-        GetKeyedHash(ref buffer, _secretKey, formattedDate);
-        GetKeyedHash(ref buffer, buffer, _region);
-        GetKeyedHash(ref buffer, buffer, _service);
-        GetKeyedHash(ref buffer, buffer, "aws4_request");
-        GetKeyedHash(ref buffer, buffer, builder.AsReadonlySpan());
-
+        signature = signature[..Sign(ref signature, signature, builder.AsReadonlySpan())];
         builder.Dispose();
 
-        return ToHex(buffer);
+        return ToHex(signature);
+    }
+
+    public string CalculateUrlSignature(string url, DateTime requestDate)
+    {
+        var builder = new ValueStringBuilder(stackalloc char[512]);
+
+        AppendStringToSign(ref builder, requestDate);
+        AppendCanonicalRequestHash(ref builder, url);
+
+        Span<byte> signature = stackalloc byte[32];
+        CreateSigningKey(ref signature, requestDate);
+
+        signature = signature[..Sign(ref signature, signature, builder.AsReadonlySpan())];
+        builder.Dispose();
+
+        return ToHex(signature);
     }
 
     private static void AppendCanonicalHeaders(
@@ -166,12 +164,9 @@ internal sealed class Signature
         builder.RemoveLast();
     }
 
-    /// <summary>
-    /// http://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
-    /// </summary>
     private static void AppendCanonicalRequestHash(
-        ref ValueStringBuilder builder,
-        HttpRequestMessage request, string[] signedHeaders, string payloadHash)
+        ref ValueStringBuilder builder, HttpRequestMessage request,
+        string[] signedHeaders, string payload)
     {
         var canonical = new ValueStringBuilder(stackalloc char[512]);
         var uri = request.RequestUri!;
@@ -180,7 +175,7 @@ internal sealed class Signature
 
         canonical.Append(request.Method.Method);
         canonical.Append(newLine);
-        canonical.Append(uri.AbsolutePath);
+        canonical.Append(uri.LocalPath);
         canonical.Append(newLine);
 
         AppendCanonicalQueryParameters(ref canonical, uri.Query);
@@ -199,7 +194,30 @@ internal sealed class Signature
         }
 
         canonical.Append(newLine);
-        canonical.Append(payloadHash);
+        canonical.Append(payload);
+
+        AppendSha256ToHex(ref builder, canonical.AsReadonlySpan());
+
+        canonical.Dispose();
+    }
+
+    private static void AppendCanonicalRequestHash(ref ValueStringBuilder builder, string url)
+    {
+        var uri = new Uri(url);
+
+        var canonical = new ValueStringBuilder(stackalloc char[256]);
+        canonical.Append("GET\n"); // canonical request
+        canonical.Append(uri.LocalPath);
+        canonical.Append('\n');
+        canonical.Append(uri.Query.AsSpan(1));
+        canonical.Append('\n');
+        canonical.Append("host:");
+        canonical.Append(uri.Host);
+        canonical.Append(':');
+        canonical.Append(uri.Port);
+        canonical.Append("\n\n");
+        canonical.Append("host\n");
+        canonical.Append("UNSIGNED-PAYLOAD");
 
         AppendSha256ToHex(ref builder, canonical.AsReadonlySpan());
 
@@ -251,16 +269,27 @@ internal sealed class Signature
         }
     }
 
-    [SuppressMessage("ReSharper", "InvertIf")]
-    private static void GetKeyedHash(ref Span<byte> buffer, ReadOnlySpan<byte> key, scoped ReadOnlySpan<char> value)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void AppendStringToSign(ref ValueStringBuilder builder, DateTime requestDate)
     {
-        var count = Encoding.UTF8.GetByteCount(value);
-        using var memory = MemoryPool<byte>.Shared.Rent(count);
-        if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
-        {
-            Encoding.UTF8.GetBytes(value, segment);
-            HMACSHA256.TryHashData(key, segment, buffer, out _);
-        }
+        Span<char> dateBuffer = stackalloc char[16];
+
+        builder.Append("AWS4-HMAC-SHA256\n");
+        builder.Append(dateBuffer[..StringUtils.Format(ref dateBuffer, requestDate, Iso8601DateTime)]);
+        builder.Append("\n");
+        builder.Append(dateBuffer[..StringUtils.Format(ref dateBuffer, requestDate, Iso8601Date)]);
+        builder.Append(_scope);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void CreateSigningKey(ref Span<byte> buffer, DateTime requestDate)
+    {
+        Span<char> dateBuffer = stackalloc char[16];
+
+        Sign(ref buffer, _secretKey, dateBuffer[..StringUtils.Format(ref dateBuffer, requestDate, Iso8601Date)]);
+        Sign(ref buffer, buffer, _region);
+        Sign(ref buffer, buffer, _service);
+        Sign(ref buffer, buffer, "aws4_request");
     }
 
     private static string NormalizeHeader(string header)
@@ -280,6 +309,20 @@ internal sealed class Signature
     }
 
     [SuppressMessage("ReSharper", "InvertIf")]
+    private static int Sign(ref Span<byte> buffer, ReadOnlySpan<byte> key, scoped ReadOnlySpan<char> content)
+    {
+        var count = Encoding.UTF8.GetByteCount(content);
+        using var memory = MemoryPool<byte>.Shared.Rent(count);
+        if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
+        {
+            Encoding.UTF8.GetBytes(content, segment);
+            if (HMACSHA256.TryHashData(key, segment, buffer, out var written)) return written;
+        }
+
+        return -1;
+    }
+
+    [SuppressMessage("ReSharper", "InvertIf")]
     private static string Sha256ToHex(ReadOnlySpan<char> value)
     {
         var count = Encoding.UTF8.GetByteCount(value);
@@ -287,10 +330,10 @@ internal sealed class Signature
         if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
         {
             Encoding.UTF8.GetBytes(value, segment);
-            Span<byte> hashBuffer = stackalloc byte[32];
-            if (SHA256.TryHashData(segment, hashBuffer, out _))
+            Span<byte> hashBuffer = stackalloc byte[64];
+            if (SHA256.TryHashData(segment, hashBuffer, out var written))
             {
-                return ToHex(hashBuffer);
+                return ToHex(hashBuffer[..written]);
             }
         }
 

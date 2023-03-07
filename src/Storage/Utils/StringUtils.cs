@@ -28,22 +28,28 @@ internal static class StringUtils
     public static StringBuilder GetBuilder() => Interlocked.Exchange(ref _sharedBuilder, null)
                                                 ?? new StringBuilder(4096);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int Format(ref Span<char> buffer, DateTime dateTime, string format)
     {
-        dateTime.TryFormat(buffer, out var written, format, CultureInfo.InvariantCulture);
-        return written;
+        return dateTime.TryFormat(buffer, out var written, format, CultureInfo.InvariantCulture)
+            ? written
+            : -1;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int FormatX2(ref Span<char> buffer, byte value)
     {
-        value.TryFormat(buffer, out var written, "x2", CultureInfo.InvariantCulture);
-        return written;
+        return value.TryFormat(buffer, out var written, "x2", CultureInfo.InvariantCulture)
+            ? written
+            : -1;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int FormatX2(ref Span<char> buffer, char value)
     {
-        ((int) value).TryFormat(buffer, out var written, "x2", CultureInfo.InvariantCulture);
-        return written;
+        return ((int) value).TryFormat(buffer, out var written, "x2", CultureInfo.InvariantCulture)
+            ? written
+            : -1;
     }
 
     public static string Flush(this StringBuilder builder)

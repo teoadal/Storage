@@ -9,7 +9,7 @@
     <PropertyGroup>
         <Title>Storage</Title>
         <Description>Simple client for S3-storage</Description>
-        <Version>0.5.3</Version>
+        <Version>0.5.4</Version>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>git://github.com/teoadal/Storage</RepositoryUrl>
         <PackageId>Storages3</PackageId>
@@ -23,7 +23,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\..\README.md" Pack="true" PackagePath=""/>
+        <None Include="..\..\README.md" Pack="true" PackagePath="" />
     </ItemGroup>
 
 </Project>

@@ -10,7 +10,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
 
     public BucketShould(StorageFixture fixture)
     {
-        _client = fixture.Client;
+        _client = fixture.StorageClient;
         _fixture = fixture;
     }
 
