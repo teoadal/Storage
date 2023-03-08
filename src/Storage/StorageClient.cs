@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net;
@@ -8,6 +9,7 @@ using Storage.Utils;
 
 namespace Storage;
 
+[DebuggerDisplay("Client for '{_bucket}'")]
 [SuppressMessage("ReSharper", "SwitchStatementHandlesSomeKnownEnumValuesWithDefault")]
 public sealed class StorageClient : IDisposable
 {
@@ -41,13 +43,18 @@ public sealed class StorageClient : IDisposable
         _signature = new Signature(settings.SecretKey, settings.Region, settings.Service);
     }
 
+    /// <summary>
+    /// Builds pre-signed file url
+    /// </summary>
+    /// <remarks>This method will not check if the file exists or not: use <see cref="GetFileUrl"/> for check existing of file</remarks>
+    /// <param name="fileName">Name of file</param>
+    /// <param name="expiration">Time of url expiration</param>
+    /// <returns>Pre-signed URL of the file</returns>
     public string BuildFileUrl(string fileName, TimeSpan expiration)
     {
-        var expires = expiration.TotalSeconds.ToString(CultureInfo.InvariantCulture);
         var now = DateTime.UtcNow;
-
-        var url = _http.BuildUrl(_bucket, fileName, now, expires);
-        var signature = _signature.CalculateUrlSignature(url, now);
+        var url = _http.BuildUrl(_bucket, fileName, now, expiration);
+        var signature = _signature.Calculate(url, now);
 
         return $"{url}&X-Amz-Signature={signature}";
     }
@@ -55,7 +62,7 @@ public sealed class StorageClient : IDisposable
     public async Task<bool> CreateBucket(CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Put);
-        using var response = await Send(request, Signature.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
 
         switch (response.StatusCode)
         {
@@ -72,7 +79,7 @@ public sealed class StorageClient : IDisposable
     public async Task<bool> BucketExists(CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Head);
-        using var response = await Send(request, Signature.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
 
         switch (response.StatusCode)
         {
@@ -89,7 +96,7 @@ public sealed class StorageClient : IDisposable
     public async Task<bool> DeleteBucket(CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Delete);
-        using var response = await Send(request, Signature.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
 
         switch (response.StatusCode)
         {
@@ -103,10 +110,17 @@ public sealed class StorageClient : IDisposable
         }
     }
 
+    /// <summary>
+    /// Deletes the file from storage
+    /// </summary>
+    /// <param name="fileName">Name of the file to be deleted</param>
+    /// <param name="cancellation">Cancellation token</param>
+    /// <remarks>Storage sends the same response in the following cases: the file was indeed deleted, the file did not exist</remarks>
+    /// <exception cref="HttpRequestException">Connection problems or status code isn't <see cref="HttpStatusCode.NoContent"/></exception>
     public async Task DeleteFile(string fileName, CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Delete, fileName);
-        using var response = await Send(request, Signature.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
 
         if (response.StatusCode != HttpStatusCode.NoContent) Errors.UnexpectedResult(response);
     }
@@ -114,7 +128,7 @@ public sealed class StorageClient : IDisposable
     public async Task<bool> FileExists(string fileName, CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Head, fileName);
-        using var response = await Send(request, Signature.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
 
         switch (response.StatusCode)
         {
@@ -128,20 +142,39 @@ public sealed class StorageClient : IDisposable
         }
     }
 
+    /// <summary>
+    /// Gets file data from the storage
+    /// </summary>
+    /// <param name="fileName">File name than will be received</param>
+    /// <param name="cancellation">Cancellation token</param>
+    /// <returns>Wrapper around <see cref="HttpResponseMessage"/> with the data of the file from storage</returns>
+    /// <exception cref="HttpRequestException">Connection problems or status code isn't <see cref="HttpStatusCode.NoContent"/></exception>
     public async Task<StorageFile> GetFile(string fileName, CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Get, fileName);
-        var response = await Send(request, Signature.EmptyPayloadHash, cancellation);
+        var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
 
-        if (response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK})
+        switch (response.StatusCode)
         {
-            return new StorageFile(response, await response.Content.ReadAsStreamAsync(cancellation));
+            case HttpStatusCode.OK:
+                return new StorageFile(response, await response.Content.ReadAsStreamAsync(cancellation));
+            case HttpStatusCode.NotFound:
+                response.Dispose();
+                return new StorageFile(response, Stream.Null);
+            default:
+                Errors.UnexpectedResult(response);
+                return new StorageFile();
         }
-
-        response.Dispose();
-        return new StorageFile(response, Stream.Null);
     }
 
+    /// <summary>
+    /// Ensures a file exists in the storage and returns pre-signed URL of the file 
+    /// </summary>
+    /// <param name="fileName">Name of a file that exists in the storage</param>
+    /// <param name="expiration">Time of url expiration</param>
+    /// <param name="cancellation">Cancellation token</param>
+    /// <returns>Returns <see cref="string"/> with pre-signed URL of file or <b>null</b> if there isn't a file</returns>
+    /// <exception cref="HttpRequestException">Connection problems or other unexpected <see cref="HttpStatusCode"/></exception>
     public async Task<string?> GetFileUrl(string fileName, TimeSpan expiration, CancellationToken cancellation)
     {
         return await FileExists(fileName, cancellation)
@@ -161,7 +194,7 @@ public sealed class StorageClient : IDisposable
         content.Headers.Add("content-type", contentType);
         request.Content = content;
 
-        var payloadHash = Signature.GetPayloadHash(buffer.AsSpan(0, dataSize));
+        var payloadHash = HashHelper.GetPayloadHash(buffer.AsSpan(0, dataSize));
         bufferPool.Return(buffer);
 
         using var response = await Send(request, payloadHash, cancellation);
@@ -181,7 +214,7 @@ public sealed class StorageClient : IDisposable
         content.Headers.Add("content-type", contentType);
         request.Content = content;
 
-        using var response = await Send(request, Signature.GetPayloadHash(data), cancellation);
+        using var response = await Send(request, HashHelper.GetPayloadHash(data), cancellation);
 
         if (response.StatusCode == HttpStatusCode.OK) return true;
         Errors.UnexpectedResult(response);
@@ -242,6 +275,16 @@ public sealed class StorageClient : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// Uploads a file data to the storage
+    /// </summary>
+    /// <remarks>If length of <paramref name="data"/> greater 5 Mb then will use multipart method of upload instead just direct upload</remarks>
+    /// <param name="fileName">Name of data</param>
+    /// <param name="data">Stream with file data</param>
+    /// <param name="contentType">Type of file data in MIME format</param>
+    /// <param name="cancellation">Cancellation token</param>
+    /// <returns>Returns <b>true</b> if file has been uploaded or <b>false</b> if not</returns>
+    /// <exception cref="HttpRequestException">Connection problems or other unexpected <see cref="HttpStatusCode"/></exception>
     public Task<bool> UploadFile(string fileName, Stream data, string contentType, CancellationToken cancellation)
     {
         return data.Length is > 0 and > DefaultPartSize
@@ -276,7 +319,7 @@ public sealed class StorageClient : IDisposable
         headers.Add("x-amz-content-sha256", payloadHash);
         headers.Add("x-amz-date", now.ToString(Signature.Iso8601DateTime, CultureInfo.InvariantCulture));
 
-        var signature = _signature.CalculateRequestSignature(request, payloadHash, S3Headers, now);
+        var signature = _signature.Calculate(request, payloadHash, S3Headers, now);
         headers.TryAddWithoutValidation("Authorization", _http.BuildHeader(now, signature));
 
         return _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
@@ -294,7 +337,7 @@ public sealed class StorageClient : IDisposable
         content.Headers.Add("content-length", chunkSize.ToString());
         request.Content = content;
 
-        var payloadHash = Signature.GetPayloadHash(chunkData.AsSpan(0, chunkSize));
+        var payloadHash = HashHelper.GetPayloadHash(chunkData.AsSpan(0, chunkSize));
         using var response = await Send(request, payloadHash, cancellation);
 
         return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK}
@@ -305,7 +348,7 @@ public sealed class StorageClient : IDisposable
     private async Task<bool> UploadChunkAbort(string fileName, string uploadId, CancellationToken cancellation)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, $"{_bucket}/{fileName}?uploadId={uploadId}");
-        using var response = await Send(request, Signature.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
 
         return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK};
     }
@@ -333,7 +376,7 @@ public sealed class StorageClient : IDisposable
         using var content = new StringContent(data, Encoding.UTF8);
         request.Content = content;
 
-        using var response = await Send(request, Signature.GetPayloadHash(data), cancellation);
+        using var response = await Send(request, HashHelper.GetPayloadHash(data), cancellation);
         return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK};
     }
 
@@ -345,7 +388,7 @@ public sealed class StorageClient : IDisposable
         content.Headers.Add("content-type", fileType);
         request.Content = content;
 
-        using var response = await Send(request, Signature.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
         return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK}
             ? MultipartUploadResult.GetUploadId(await response.Content.ReadAsStreamAsync(cancellation))
             : null;

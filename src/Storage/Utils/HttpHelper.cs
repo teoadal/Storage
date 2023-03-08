@@ -9,19 +9,24 @@ internal readonly struct HttpHelper
     public static readonly HashSet<char> ValidUrlCharacters =
         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~".ToHashSet();
 
-    public static void AppendEncodedName(ref ValueStringBuilder builder, string fileName)
+    public static bool AppendEncodedName(ref ValueStringBuilder builder, ReadOnlySpan<char> name)
     {
-        Span<char> charBuffer = stackalloc char[2];
-        Span<char> upperBuffer = stackalloc char[2];
-
-        var count = Encoding.UTF8.GetByteCount(fileName);
+        var count = Encoding.UTF8.GetByteCount(name);
+        var encoded = false;
         using var memory = MemoryPool<byte>.Shared.Rent(count);
+
+        // ReSharper disable once InvertIf
         if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
         {
-            Encoding.UTF8.GetBytes(fileName, segment);
+            Span<char> charBuffer = stackalloc char[2];
+            Span<char> upperBuffer = stackalloc char[2];
+
+            var validCharacters = ValidUrlCharacters;
+            Encoding.UTF8.GetBytes(name, segment);
+
             foreach (char symbol in segment)
             {
-                if (ValidUrlCharacters.Contains(symbol))
+                if (validCharacters.Contains(symbol))
                 {
                     builder.Append(symbol);
                 }
@@ -32,9 +37,23 @@ internal readonly struct HttpHelper
                     StringUtils.FormatX2(ref charBuffer, symbol);
                     MemoryExtensions.ToUpperInvariant(charBuffer, upperBuffer);
                     builder.Append(upperBuffer);
+
+                    encoded = true;
                 }
             }
         }
+
+        return encoded;
+    }
+
+    public static string EncodeName(string fileName)
+    {
+        var builder = new ValueStringBuilder(stackalloc char[fileName.Length]);
+        var encoded = AppendEncodedName(ref builder, fileName);
+
+        return encoded
+            ? builder.Flush()
+            : fileName;
     }
 
     private readonly string _headerEnd;
@@ -65,7 +84,7 @@ internal readonly struct HttpHelper
         return builder.Flush();
     }
 
-    public string BuildUrl(string bucket, string fileName, DateTime now, string expires)
+    public string BuildUrl(string bucket, string fileName, DateTime now, TimeSpan expires)
     {
         Span<char> dateBuffer = stackalloc char[16];
         var builder = new ValueStringBuilder(stackalloc char[512]);
@@ -82,51 +101,10 @@ internal readonly struct HttpHelper
         builder.Append("&X-Amz-Date=");
         builder.Append(dateBuffer[..StringUtils.Format(ref dateBuffer, now, Signature.Iso8601DateTime)]);
         builder.Append("&X-Amz-Expires=");
-        builder.Append(expires);
+        builder.Append(expires.TotalSeconds);
 
         builder.Append($"&X-Amz-SignedHeaders=host");
 
         return builder.Flush();
-    }
-
-    public static string EncodeName(string fileName)
-    {
-        Span<char> charBuffer = stackalloc char[2];
-        Span<char> upperBuffer = stackalloc char[2];
-
-        var builder = StringUtils.GetBuilder();
-        var count = Encoding.UTF8.GetByteCount(fileName);
-        var encoded = false;
-
-        using var memory = MemoryPool<byte>.Shared.Rent(count);
-        if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
-        {
-            Encoding.UTF8.GetBytes(fileName, segment);
-            foreach (char symbol in segment)
-            {
-                if (ValidUrlCharacters.Contains(symbol))
-                {
-                    builder.Append(symbol);
-                }
-                else
-                {
-                    builder.Append('%');
-
-                    StringUtils.FormatX2(ref charBuffer, symbol);
-                    MemoryExtensions.ToUpperInvariant(charBuffer, upperBuffer);
-                    builder.Append(upperBuffer);
-
-                    encoded = true;
-                }
-            }
-        }
-
-        if (encoded)
-        {
-            return builder.Flush();
-        }
-
-        builder.Return();
-        return fileName;
     }
 }

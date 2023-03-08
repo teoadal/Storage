@@ -60,11 +60,4 @@ internal static class StringUtils
         Interlocked.Exchange(ref _sharedBuilder, builder);
         return result;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void Return(this StringBuilder builder)
-    {
-        builder.Clear();
-        Interlocked.Exchange(ref _sharedBuilder, builder);
-    }
 }

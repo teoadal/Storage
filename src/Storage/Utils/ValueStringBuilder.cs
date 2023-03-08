@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 namespace Storage.Utils;
@@ -51,7 +52,20 @@ internal ref struct ValueStringBuilder
         }
         else Errors.CantFormatToString(value);
     }
-    
+
+    public void Append(double value)
+    {
+        Span<char> buffer = stackalloc char[32];
+        var pos = _length;
+        if (value.TryFormat(buffer, out var written, default, CultureInfo.InvariantCulture))
+        {
+            if (pos > _buffer.Length - written) Grow(written);
+            buffer.CopyTo(_buffer[pos..]);
+            _length = pos + written;
+        }
+        else Errors.CantFormatToString(value);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Append(string? s)
     {

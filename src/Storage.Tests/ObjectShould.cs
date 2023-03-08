@@ -18,6 +18,17 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     }
 
     [Fact]
+    public void BuildUrl()
+    {
+        var fileName = _fixture.Create<string>();
+
+        _client
+            .Invoking(client => client.BuildFileUrl(fileName, TimeSpan.FromSeconds(100)))
+            .Should().NotThrow()
+            .Which.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task BeExists()
     {
         var fileName = await CreateTestFile();
@@ -188,6 +199,23 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     }
 
     [Fact]
+    public async Task PutMultipartWithPartSize()
+    {
+        var fileName = _fixture.Create<string>();
+        const int partSize = 5 * 1024 * 1024; // 5 Mb 
+        using var data = StorageFixture.GetByteStream(12 * 1024 * 1024); // 12 Mb
+        var filePutResult =
+            await _client.PutFileMultipart(fileName, data, StorageFixture.StreamContentType, partSize, _cancellation);
+
+        filePutResult
+            .Should().BeTrue();
+
+        await EnsureFileSame(fileName, data.ToArray());
+        await DeleteTestFile(fileName);
+    }
+
+
+    [Fact]
     public async Task Upload()
     {
         var fileName = _fixture.Create<string>();
@@ -226,6 +254,15 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
             .Should().NotThrowAsync();
 
         await DeleteTestFile(fileName);
+    }
+
+    [Fact]
+    public async Task NotThrowIfGetNotExistsFile()
+    {
+        var fileName = _fixture.Create<string>();
+        await _client
+            .Invoking(client => client.GetFile(fileName, _cancellation))
+            .Should().NotThrowAsync();
     }
 
     [Fact]

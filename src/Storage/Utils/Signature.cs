@@ -13,21 +13,6 @@ internal sealed class Signature
     public const string Iso8601DateTime = "yyyyMMddTHHmmssZ";
     public const string Iso8601Date = "yyyyMMdd";
 
-    public static readonly string EmptyPayloadHash = Sha256ToHex(string.Empty);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string GetPayloadHash(ReadOnlySpan<byte> data)
-    {
-        Span<byte> hashBuffer = stackalloc byte[32];
-        return SHA256.TryHashData(data, hashBuffer, out _)
-            ? ToHex(hashBuffer)
-            : string.Empty;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string GetPayloadHash(string data) => Sha256ToHex(data);
-
-
     private static SortedDictionary<string, string>? _headerSort = new();
     private readonly string _region;
     private readonly byte[] _secretKey;
@@ -42,7 +27,8 @@ internal sealed class Signature
         _service = service;
     }
 
-    public string CalculateRequestSignature(HttpRequestMessage request,
+    public string Calculate(
+        HttpRequestMessage request,
         string payload, string[] signedHeaders, DateTime requestDate)
     {
         var builder = new ValueStringBuilder(stackalloc char[512]);
@@ -56,10 +42,10 @@ internal sealed class Signature
         signature = signature[..Sign(ref signature, signature, builder.AsReadonlySpan())];
         builder.Dispose();
 
-        return ToHex(signature);
+        return HashHelper.ToHex(signature);
     }
 
-    public string CalculateUrlSignature(string url, DateTime requestDate)
+    public string Calculate(string url, DateTime requestDate)
     {
         var builder = new ValueStringBuilder(stackalloc char[512]);
 
@@ -72,7 +58,7 @@ internal sealed class Signature
         signature = signature[..Sign(ref signature, signature, builder.AsReadonlySpan())];
         builder.Dispose();
 
-        return ToHex(signature);
+        return HashHelper.ToHex(signature);
     }
 
     private static void AppendCanonicalHeaders(
@@ -137,9 +123,12 @@ internal sealed class Signature
                     ++scanIndex;
                 }
 
-                AppendEncodedUrl(ref builder, UnescapeString(query.AsSpan(scanIndex, equalIndex - scanIndex)));
+                var name = UnescapeString(query.AsSpan(scanIndex, equalIndex - scanIndex));
+                HttpHelper.AppendEncodedName(ref builder, name);
                 builder.Append('=');
-                AppendEncodedUrl(ref builder, UnescapeString(query.AsSpan(equalIndex + 1, delimiter - equalIndex - 1)));
+
+                var value = UnescapeString(query.AsSpan(equalIndex + 1, delimiter - equalIndex - 1));
+                HttpHelper.AppendEncodedName(ref builder, value);
                 builder.Append('&');
 
                 equalIndex = query.IndexOf('=', delimiter);
@@ -149,9 +138,9 @@ internal sealed class Signature
             {
                 if (delimiter > scanIndex)
                 {
-                    AppendEncodedUrl(ref builder, query.AsSpan(scanIndex, delimiter - scanIndex));
+                    HttpHelper.AppendEncodedName(ref builder, query.AsSpan(scanIndex, delimiter - scanIndex));
                     builder.Append('=');
-                    AppendEncodedUrl(ref builder, string.Empty);
+                    HttpHelper.AppendEncodedName(ref builder, string.Empty);
                     builder.Append('&');
                 }
             }
@@ -220,33 +209,6 @@ internal sealed class Signature
         AppendSha256ToHex(ref builder, canonical.AsReadonlySpan());
 
         canonical.Dispose();
-    }
-
-    [SuppressMessage("ReSharper", "InvertIf")]
-    private static void AppendEncodedUrl(ref ValueStringBuilder builder, ReadOnlySpan<char> url)
-    {
-        Span<char> charBuffer = stackalloc char[2];
-
-        var count = Encoding.UTF8.GetByteCount(url);
-        using var memory = MemoryPool<byte>.Shared.Rent(count);
-        if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
-        {
-            Encoding.UTF8.GetBytes(url, segment);
-
-            var validUrlCharacters = HttpHelper.ValidUrlCharacters;
-            foreach (char symbol in segment)
-            {
-                if (validUrlCharacters.Contains(symbol))
-                {
-                    builder.Append(symbol);
-                }
-                else
-                {
-                    builder.Append('%');
-                    builder.Append(charBuffer[..StringUtils.FormatX2(ref charBuffer, symbol)]);
-                }
-            }
-        }
     }
 
     [SuppressMessage("ReSharper", "InvertIf")]
@@ -320,38 +282,6 @@ internal sealed class Signature
         }
 
         return -1;
-    }
-
-    [SuppressMessage("ReSharper", "InvertIf")]
-    private static string Sha256ToHex(ReadOnlySpan<char> value)
-    {
-        var count = Encoding.UTF8.GetByteCount(value);
-        using var memory = MemoryPool<byte>.Shared.Rent(count);
-        if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
-        {
-            Encoding.UTF8.GetBytes(value, segment);
-            Span<byte> hashBuffer = stackalloc byte[64];
-            if (SHA256.TryHashData(segment, hashBuffer, out var written))
-            {
-                return ToHex(hashBuffer[..written]);
-            }
-        }
-
-        return string.Empty;
-    }
-
-    // ReSharper disable once ParameterTypeCanBeEnumerable.Local
-    private static string ToHex(ReadOnlySpan<byte> data)
-    {
-        Span<char> buffer = stackalloc char[2];
-        var builder = new ValueStringBuilder(stackalloc char[64]);
-
-        foreach (var element in data)
-        {
-            builder.Append(buffer[..StringUtils.FormatX2(ref buffer, element)]);
-        }
-
-        return builder.Flush();
     }
 
     private static string UnescapeString(ReadOnlySpan<char> query)
