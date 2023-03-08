@@ -16,10 +16,21 @@ jobs:
         os: [ macos-latest, ubuntu-latest, windows-latest ]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: 7.0.x
-    - name: Build with dotnet
-      run: dotnet build -c Release
+      - uses: actions/checkout@v2
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 7.0.x
+      - name: Build with dotnet
+        run: dotnet build -c Release
+      - name: Run tests with coverage
+        env:
+          USE_MINIO_PLAYGROUND: true
+        run: |
+          cd ./src/Storage.Tests/
+          dotnet test -c Release --no-build /p:CollectCoverage=true /p:CoverletOutput=TestResults/ /p:CoverletOutputFormat=opencover
+      - name: Publish coverage report
+        if: startsWith(matrix.os, 'ubuntu')
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

@@ -14,21 +14,48 @@ public sealed class StorageFixture : IDisposable
 
     private const int DefaultByteArraySize = 1 * 1024 * 1024; //7Mb
     private Fixture? _fixture;
+    private readonly bool _isMinioPlayground;
 
     public StorageFixture()
     {
-        Settings = new StorageSettings
+        _isMinioPlayground = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("USE_MINIO_PLAYGROUND"));
+
+        if (_isMinioPlayground)
         {
-            AccessKey = "ROOTUSER",
-            Bucket = "reconfig",
-            EndPoint = "localhost",
-            Port = 5300,
-            SecretKey = "ChangeMe123",
-            UseHttps = false
-        };
+            // https://min.io/docs/minio/linux/developers/python/minio-py.html#file-uploader-py
+
+            Settings = new StorageSettings
+            {
+                AccessKey = "Q3AM3UQ867SPQQA43P2F",
+                Bucket = "reconfig",
+                EndPoint = "play.min.io",
+                Port = 9000,
+                SecretKey = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG",
+                UseHttps = true
+            };
+        }
+        else
+        {
+            Settings = new StorageSettings
+            {
+                AccessKey = "ROOTUSER",
+                Bucket = "reconfig",
+                EndPoint = "localhost",
+                Port = 5300,
+                SecretKey = "ChangeMe123",
+                UseHttps = false
+            };
+        }
 
         HttpClient = new HttpClient();
         StorageClient = new StorageClient(Settings);
+
+        if (_isMinioPlayground)
+        {
+            StorageClient.CreateBucket(CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+        }
     }
 
     public T Create<T>() => Mocks.Create<T>();
@@ -54,7 +81,19 @@ public sealed class StorageFixture : IDisposable
 
     public void Dispose()
     {
-        StorageClient.Dispose();
-        HttpClient.Dispose();
+        try
+        {
+            if (_isMinioPlayground)
+            {
+                StorageClient.DeleteBucket(CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+        }
+        finally
+        {
+            StorageClient.Dispose();
+            HttpClient.Dispose();
+        }
     }
 }
