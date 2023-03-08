@@ -27,7 +27,7 @@ public sealed class StorageFixture : IDisposable
             Settings = new StorageSettings
             {
                 AccessKey = "Q3AM3UQ867SPQQA43P2F",
-                Bucket = "reconfig",
+                Bucket = $"storages3-{Guid.NewGuid()}",
                 EndPoint = "play.min.io",
                 Port = 9000,
                 SecretKey = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG",
