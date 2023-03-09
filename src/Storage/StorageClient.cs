@@ -30,6 +30,7 @@ public sealed class StorageClient : IDisposable
     private readonly HttpHelper _http;
     private readonly HttpClient _client;
     private readonly Signature _signature;
+    private readonly bool _useHttp2;
 
     public StorageClient(StorageSettings settings, HttpClient? client = null)
     {
@@ -41,6 +42,7 @@ public sealed class StorageClient : IDisposable
         _endpoint = $"{settings.EndPoint}:{settings.Port}";
         _http = new HttpHelper(settings.AccessKey, settings.Region, settings.Service, S3Headers);
         _signature = new Signature(settings.SecretKey, settings.Region, settings.Service);
+        _useHttp2 = settings.UseHttp2;
     }
 
     /// <summary>
@@ -318,6 +320,8 @@ public sealed class StorageClient : IDisposable
         headers.Add("host", _endpoint);
         headers.Add("x-amz-content-sha256", payloadHash);
         headers.Add("x-amz-date", now.ToString(Signature.Iso8601DateTime, CultureInfo.InvariantCulture));
+
+        if (_useHttp2) request.Version = HttpVersion.Version20;
 
         var signature = _signature.Calculate(request, payloadHash, S3Headers, now);
         headers.TryAddWithoutValidation("Authorization", _http.BuildHeader(now, signature));

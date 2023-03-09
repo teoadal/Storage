@@ -23,12 +23,22 @@ jobs:
           dotnet-version: 7.0.x
       - name: Build with dotnet
         run: dotnet build -c Release
+      - name: Setup minio
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          docker run -d -p 9000:9000 --name minio 
+                     -e "MINIO_ACCESS_KEY=ROOTUSER" 
+                     -e "MINIO_SECRET_KEY=ChangeMe123" 
+                     -v /tmp/data:/data 
+                     -v /tmp/config:/root/.minio 
+                     minio/minio server /data
       - name: Run tests with coverage
+        if: startsWith(matrix.os, 'ubuntu')
         env:
-          USE_MINIO_PLAYGROUND: true
+          GITHUB: true
         run: |
           cd ./src/Storage.Tests/
-          dotnet test -c Release --no-build /p:CollectCoverage=true /p:CoverletOutput=TestResults/ /p:CoverletOutputFormat=opencover
+          dotnet test -c Release --no-build /p:CollectCoverage=true /p:CoverletOutput=TestResults/ /p:CoverletOutputFormat=opencover /p:Exclude="[*]Storage.Benchmark.*"
       - name: Publish coverage report
         if: startsWith(matrix.os, 'ubuntu')
         uses: codecov/codecov-action@v3

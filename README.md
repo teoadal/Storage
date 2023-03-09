@@ -1,13 +1,12 @@
-[![Pipeline](https://github.com/teoadal/storage/workflows/.NET%20Core/badge.svg?branch=master)](https://github.com/teoadal/storage/actions)
+[![.NET Core](https://github.com/teoadal/Storage/actions/workflows/dotnet.yml/badge.svg)](https://github.com/teoadal/Storage/actions/workflows/dotnet.yml)
 [![NuGet](https://img.shields.io/nuget/v/Storages3.svg)](https://www.nuget.org/packages/Storages3)
 [![NuGet](https://img.shields.io/nuget/dt/Storages3.svg)](https://www.nuget.org/packages/Storages3)
 [![CodeFactor](https://www.codefactor.io/repository/github/teoadal/storage/badge)](https://www.codefactor.io/repository/github/teoadal/storage)
 
 # Клиент для S3
 
-Привет! Это обертка над HttpClient для работы с S3 хранилищами. **Протестировано только на Minio, без https**. Мотивация
-создания была простейшей - я не понимал, почему
-клиенты [AWS](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html)
+Привет! Это обертка над HttpClient для работы с S3 хранилищами. Мотивация создания была простейшей - я не понимал,
+почему клиенты [AWS](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html)
 и [Minio](https://github.com/minio/minio-dotnet) едят так много памяти . Результат моих экспериментов: скорость
 почти как у Minio, а памяти потребляю почти в 200 раз меньше, чем клиент для AWS.
 
@@ -154,5 +153,4 @@ Console.WriteLine("Файл удалён, если он, конечно, сущ�
 
 ## Тесты
 
-Как запускать тесты через ``github actions`` пока не придумал. Нужна же minio, а как вставить её я не знаю. Варианты
-нашёл, читаю.
+Тестирование в github производится с помощью [Minio Playground](https://play.min.io:9443) (https, с использованием ключей доступа [из документации](https://min.io/docs/minio/linux/developers/python/minio-py.html#file-uploader-py)). Локальное тестирование и измерение производительности осуществляется с помощью Minio в Docker'e по http.

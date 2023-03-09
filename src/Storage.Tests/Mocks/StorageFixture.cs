@@ -14,43 +14,26 @@ public sealed class StorageFixture : IDisposable
 
     private const int DefaultByteArraySize = 1 * 1024 * 1024; //7Mb
     private Fixture? _fixture;
-    private readonly bool _isMinioPlayground;
+    private readonly bool _isPlayground;
 
     public StorageFixture()
     {
-        _isMinioPlayground = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("USE_MINIO_PLAYGROUND"));
+        _isPlayground = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB"));
 
-        if (_isMinioPlayground)
+        Settings = new StorageSettings
         {
-            // https://min.io/docs/minio/linux/developers/python/minio-py.html#file-uploader-py
-
-            Settings = new StorageSettings
-            {
-                AccessKey = "Q3AM3UQ867SPQQA43P2F",
-                Bucket = $"storages3-{Guid.NewGuid()}",
-                EndPoint = "play.min.io",
-                Port = 9000,
-                SecretKey = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG",
-                UseHttps = true
-            };
-        }
-        else
-        {
-            Settings = new StorageSettings
-            {
-                AccessKey = "ROOTUSER",
-                Bucket = "reconfig",
-                EndPoint = "localhost",
-                Port = 5300,
-                SecretKey = "ChangeMe123",
-                UseHttps = false
-            };
-        }
+            AccessKey = "ROOTUSER",
+            Bucket = "reconfig",
+            EndPoint = _isPlayground ? "127.0.0.1" : "localhost",
+            Port = _isPlayground ? 900 : 5300,
+            SecretKey = "ChangeMe123",
+            UseHttps = false
+        };
 
         HttpClient = new HttpClient();
         StorageClient = new StorageClient(Settings);
 
-        if (_isMinioPlayground)
+        if (_isPlayground)
         {
             StorageClient.CreateBucket(CancellationToken.None)
                 .GetAwaiter()
@@ -83,7 +66,7 @@ public sealed class StorageFixture : IDisposable
     {
         try
         {
-            if (_isMinioPlayground)
+            if (_isPlayground)
             {
                 StorageClient.DeleteBucket(CancellationToken.None)
                     .GetAwaiter()
