@@ -36,11 +36,16 @@ var storageClient = new StorageClient(new StorageSettings
 {
     AccessKey = "ROOTUSER",
     Bucket = "mybucket",
-    EndPoint = "localhost",
-    Port = 9000,
+    EndPoint = "localhost",     // для Yandex.Objects это "storage.yandexcloud.net" 
+    Port = 9000,                // стандартный порт Minio - 9000, для Yandex.Objects указывать не нужно
     SecretKey = "ChangeMe123",
+    UseHttps = false,           // для Yandex.Objects укажите true
+    UseHttp2 = false            // Yandex.Objects позволяет работать по HTTP2, можете указать true
 })
 ```
+
+Minio предоставляет [playground](https://play.min.io:9443) для тестирования (порт для запросов всё тот же - 9000). Ключи
+можно найти [в документации](https://min.io/docs/minio/linux/developers/python/minio-py.html#file-uploader-py). Доступ к Amazon S3 не тестировался.
 
 ## Операции с S3 bucket
 
@@ -154,4 +159,5 @@ Console.WriteLine("Файл удалён, если он, конечно, сущ�
 
 ## Тесты
 
-Тестирование в github производится с помощью [Minio Playground](https://play.min.io:9443) (https, с использованием ключей доступа [из документации](https://min.io/docs/minio/linux/developers/python/minio-py.html#file-uploader-py)). Локальное тестирование и измерение производительности осуществляется с помощью Minio в Docker'e по http.
+Тестирование в github производится с помощью [Minio Playground]() (https, с использованием ключей доступа ). Локальное
+тестирование и измерение производительности осуществляется с помощью Minio в Docker'e по http.
