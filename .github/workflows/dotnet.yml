@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ macos-latest, ubuntu-latest, windows-latest ]
+        os: [ ubuntu-latest ]
 
     steps:
       - uses: actions/checkout@v2
@@ -26,12 +26,16 @@ jobs:
       - name: Setup minio
         if: startsWith(matrix.os, 'ubuntu')
         run: |
-          docker run -d -p 9000:9000 --name minio 
-                     -e "MINIO_ACCESS_KEY=ROOTUSER" 
-                     -e "MINIO_SECRET_KEY=ChangeMe123" 
-                     -v /tmp/data:/data 
-                     -v /tmp/config:/root/.minio 
-                     minio/minio server /data
+          mkdir -p ~/minio/data
+
+          docker run \
+          -p 9000:9000 \
+          -p 9090:9090 \
+          --name minio \
+          -v ~/minio/data:/data \
+          -e "MINIO_ROOT_USER=ROOTUSER" \
+          -e "MINIO_ROOT_PASSWORD=ChangeMe123" \
+          quay.io/minio/minio server /data --console-address ":9090"
       - name: Run tests with coverage
         if: startsWith(matrix.os, 'ubuntu')
         env:
