@@ -17,15 +17,13 @@ public class S3Benchmark
     [Benchmark]
     public async Task<int> Aws()
     {
-        var bucket = _settings.Bucket;
-
         var result = 0;
 
-        await Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(_amazonClient, bucket);
+        await Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(_amazonClient, _bucket);
 
         try
         {
-            await _amazonClient.GetObjectMetadataAsync(bucket, _fileId, _cancellation);
+            await _amazonClient.GetObjectMetadataAsync(_bucket, _fileId, _cancellation);
         }
         catch (Exception)
         {
@@ -34,20 +32,20 @@ public class S3Benchmark
 
         _inputData.Seek(0, SeekOrigin.Begin);
 
-        await _amazonTransfer.UploadAsync(_inputData, bucket, _fileId, _cancellation);
+        await _amazonTransfer.UploadAsync(_inputData, _bucket, _fileId, _cancellation);
         result++;
 
-        await _amazonClient.GetObjectMetadataAsync(bucket, _fileId, _cancellation);
+        await _amazonClient.GetObjectMetadataAsync(_bucket, _fileId, _cancellation);
         result++;
 
         _outputData.Seek(0, SeekOrigin.Begin);
-        var fileDownload = await _amazonClient.GetObjectAsync(bucket, _fileId, _cancellation);
+        var fileDownload = await _amazonClient.GetObjectAsync(_bucket, _fileId, _cancellation);
         await fileDownload.ResponseStream.CopyToAsync(_outputData, _cancellation);
         result++;
 
         await _amazonClient.DeleteObjectAsync(new DeleteObjectRequest
         {
-            BucketName = bucket,
+            BucketName = _bucket,
             Key = _fileId
         }, _cancellation);
 
@@ -57,10 +55,9 @@ public class S3Benchmark
     [Benchmark]
     public async Task<int> Minio()
     {
-        var bucket = _settings.Bucket;
         var result = 0;
 
-        if (!await _minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucket), _cancellation))
+        if (!await _minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(_bucket), _cancellation))
         {
             ThrowException();
         }
@@ -70,7 +67,7 @@ public class S3Benchmark
         try
         {
             await _minioClient.StatObjectAsync(new StatObjectArgs()
-                .WithBucket(bucket)
+                .WithBucket(_bucket)
                 .WithObject(_fileId), _cancellation);
         }
         catch (Exception)
@@ -80,7 +77,7 @@ public class S3Benchmark
 
         _inputData.Seek(0, SeekOrigin.Begin);
         await _minioClient.PutObjectAsync(new PutObjectArgs()
-            .WithBucket(bucket)
+            .WithBucket(_bucket)
             .WithObject(_fileId)
             .WithObjectSize(_inputData.Length)
             .WithStreamData(_inputData)
@@ -89,14 +86,14 @@ public class S3Benchmark
         result++;
 
         await _minioClient.StatObjectAsync(new StatObjectArgs()
-            .WithBucket(bucket)
+            .WithBucket(_bucket)
             .WithObject(_fileId), _cancellation);
 
         result++;
 
         _outputData.Seek(0, SeekOrigin.Begin);
         await _minioClient.GetObjectAsync(new GetObjectArgs()
-                .WithBucket(bucket)
+                .WithBucket(_bucket)
                 .WithObject(_fileId)
                 .WithCallbackStream((file, ct) => file.CopyToAsync(_outputData, ct)),
             _cancellation);
@@ -104,7 +101,7 @@ public class S3Benchmark
         result++;
 
         await _minioClient.RemoveObjectAsync(new RemoveObjectArgs()
-            .WithBucket(bucket)
+            .WithBucket(_bucket)
             .WithObject(_fileId), _cancellation);
 
         return ++result;
@@ -151,6 +148,7 @@ public class S3Benchmark
 
     #region Configuration
 
+    private string _bucket;
     private CancellationToken _cancellation;
     private Stream _inputData = null!;
     private string _fileId = null!;
@@ -167,6 +165,7 @@ public class S3Benchmark
     {
         var fileData = File.ReadAllBytes("d:\\book.pdf");
 
+        _bucket = "reconfig";
         _cancellation = new CancellationToken();
         _inputData = new InputStream(fileData);
         _outputData = new MemoryStream(new byte[fileData.Length]);
@@ -175,7 +174,7 @@ public class S3Benchmark
         _settings = new StorageSettings
         {
             AccessKey = "ROOTUSER",
-            Bucket = "reconfig",
+            Bucket = _bucket,
             EndPoint = "localhost",
             Port = 5300,
             SecretKey = "ChangeMe123",
