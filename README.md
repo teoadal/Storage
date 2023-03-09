@@ -1,6 +1,7 @@
 [![.NET Core](https://github.com/teoadal/Storage/actions/workflows/dotnet.yml/badge.svg)](https://github.com/teoadal/Storage/actions/workflows/dotnet.yml)
 [![NuGet](https://img.shields.io/nuget/v/Storages3.svg)](https://www.nuget.org/packages/Storages3)
 [![NuGet](https://img.shields.io/nuget/dt/Storages3.svg)](https://www.nuget.org/packages/Storages3)
+[![codecov](https://codecov.io/gh/teoadal/Storage/branch/master/graph/badge.svg?token=8L4HN9FAIV)](https://codecov.io/gh/teoadal/Storage)
 [![CodeFactor](https://www.codefactor.io/repository/github/teoadal/storage/badge)](https://www.codefactor.io/repository/github/teoadal/storage)
 
 # Клиент для S3
