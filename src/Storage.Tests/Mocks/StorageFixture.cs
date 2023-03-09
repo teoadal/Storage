@@ -14,31 +14,35 @@ public sealed class StorageFixture : IDisposable
 
     private const int DefaultByteArraySize = 1 * 1024 * 1024; //7Mb
     private Fixture? _fixture;
-    private readonly bool _isPlayground;
 
     public StorageFixture()
     {
-        _isPlayground = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB"));
+        var environmentPort = Environment.GetEnvironmentVariable("STORAGE_PORT");
+        int? port = string.IsNullOrEmpty(environmentPort)
+            ? 5300
+            : environmentPort == "null"
+                ? null
+                : int.Parse(environmentPort);
+
+        var environmentHttps = Environment.GetEnvironmentVariable("STORAGE_HTTPS");
+        var https = !string.IsNullOrEmpty(environmentHttps) && bool.Parse(environmentHttps);
+
+        var environmentHttps2 = Environment.GetEnvironmentVariable("STORAGE_HTTPS2");
+        var https2 = !string.IsNullOrEmpty(environmentHttps2) && bool.Parse(environmentHttps2);
 
         Settings = new StorageSettings
         {
-            AccessKey = "ROOTUSER",
-            Bucket = "reconfig",
-            EndPoint = _isPlayground ? "127.0.0.1" : "localhost",
-            Port = _isPlayground ? 900 : 5300,
-            SecretKey = "ChangeMe123",
-            UseHttps = false
+            AccessKey = Environment.GetEnvironmentVariable("STORAGE_KEY") ?? "ROOTUSER",
+            Bucket = Environment.GetEnvironmentVariable("STORAGE_BUCKET") ?? "reconfig",
+            EndPoint = Environment.GetEnvironmentVariable("STORAGE_ENDPOINT") ?? "localhost",
+            Port = port,
+            SecretKey = Environment.GetEnvironmentVariable("STORAGE_SECRET") ?? "ChangeMe123",
+            UseHttps = https,
+            UseHttp2 = https2
         };
 
         HttpClient = new HttpClient();
         StorageClient = new StorageClient(Settings);
-
-        if (_isPlayground)
-        {
-            StorageClient.CreateBucket(CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
-        }
     }
 
     public T Create<T>() => Mocks.Create<T>();
@@ -64,19 +68,7 @@ public sealed class StorageFixture : IDisposable
 
     public void Dispose()
     {
-        try
-        {
-            if (_isPlayground)
-            {
-                StorageClient.DeleteBucket(CancellationToken.None)
-                    .GetAwaiter()
-                    .GetResult();
-            }
-        }
-        finally
-        {
-            StorageClient.Dispose();
-            HttpClient.Dispose();
-        }
+        HttpClient.Dispose();
+        StorageClient.Dispose();
     }
 }

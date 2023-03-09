@@ -37,9 +37,11 @@ public sealed class StorageClient : IDisposable
         Bucket = settings.Bucket;
 
         var scheme = settings.UseHttps ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
-        _bucket = ($"{scheme}://{settings.EndPoint}:{settings.Port}/{settings.Bucket}");
+        var port = settings.Port.HasValue ? $":{settings.Port}" : string.Empty;
+        
+        _bucket = ($"{scheme}://{settings.EndPoint}{port}/{settings.Bucket}");
         _client = client ?? new HttpClient();
-        _endpoint = $"{settings.EndPoint}:{settings.Port}";
+        _endpoint = $"{settings.EndPoint}{port}";
         _http = new HttpHelper(settings.AccessKey, settings.Region, settings.Service, S3Headers);
         _signature = new Signature(settings.SecretKey, settings.Region, settings.Service);
         _useHttp2 = settings.UseHttp2;

@@ -195,7 +195,7 @@ public class S3Benchmark
         _handmadeClient = new StorageClient(_settings);
 
         _minioClient = new MinioClient()
-            .WithEndpoint(_settings.EndPoint, _settings.Port)
+            .WithEndpoint(_settings.EndPoint, _settings.Port.Value)
             .WithCredentials(_settings.AccessKey, _settings.SecretKey)
             .WithSSL(_settings.UseHttps)
             .Build();

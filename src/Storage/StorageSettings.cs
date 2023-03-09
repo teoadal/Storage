@@ -8,7 +8,7 @@ public sealed class StorageSettings
 
     public required string EndPoint { get; init; }
 
-    public required int Port { get; init; }
+    public int? Port { get; init; }
 
     public string Region { get; init; } = "us-east-1";
 

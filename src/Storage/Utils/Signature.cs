@@ -200,8 +200,14 @@ internal sealed class Signature
         canonical.Append('\n');
         canonical.Append("host:");
         canonical.Append(uri.Host);
-        canonical.Append(':');
-        canonical.Append(uri.Port);
+        
+        if (!uri.IsDefaultPort)
+        {
+            canonical.Append(':');
+            canonical.Append(uri.Port);
+            
+        }
+        
         canonical.Append("\n\n");
         canonical.Append("host\n");
         canonical.Append("UNSIGNED-PAYLOAD");
