@@ -45,7 +45,8 @@ var storageClient = new StorageClient(new StorageSettings
 ```
 
 Minio предоставляет [playground](https://play.min.io:9443) для тестирования (порт для запросов всё тот же - 9000). Ключи
-можно найти [в документации](https://min.io/docs/minio/linux/developers/python/minio-py.html#file-uploader-py). Доступ к Amazon S3 не тестировался.
+можно найти [в документации](https://min.io/docs/minio/linux/developers/python/minio-py.html#file-uploader-py). Доступ к
+Amazon S3 не тестировался.
 
 ## Операции с S3 bucket
 
@@ -106,9 +107,37 @@ if (fileUploadResult) Console.WriteLine("Файл загружен");
 кусочка (не менее 5 МБ).
 
 ```csharp
-StorageResult fileUploadResult = await storageClient.PutFileMultipart(fileName, fileStream, fileContentType, partSize, cancellationToken);
+bool fileUploadResult = await storageClient.PutFileMultipart(fileName, fileStream, fileContentType, partSize, cancellationToken);
 if (fileUploadResult) Console.WriteLine("Файл загружен");
 ```
+
+#### Управление Multipart-загрузкой
+
+Для самостоятельного управления multipart-загрузкой, можно использовать методы клиента, начинающиеся со
+слова `Multipart`.
+
+```csharp
+Stream fileStream = ...
+// получаем идентификатор загрузки
+string uploadId = await storageClient.Multipart(fileName, fileType, cancellationToken);
+while(fileStream.Position < fileStream.Position) {
+    // создаём свою логику разделения на данных на куски (parts)...
+    
+    string eTag = await MultipartUpload(fileName, uploadId, partNumber, partData, partSize, cancellation);
+    
+    // запоминаем 'eTag' и номер куска... 
+    
+    if (string.IsNullOrEmpty(eTag)) { // отменяем всю загрузку, если кусок загрузить не удалось
+        await MultipartAbort(fileName, uploadId, cancellation); 
+        return false;
+    }
+}
+
+// сообщаем хранилищу, что загрузка завершена
+await MultipartComplete(fileName, uploadId, tags, cancellation);
+```
+
+В коде клиента именно эту логику использует метод PutFileMultipart. Конкретную реализацию можно подсмотреть в нём.
 
 ### Получение
 

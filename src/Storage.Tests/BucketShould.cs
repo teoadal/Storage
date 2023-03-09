@@ -53,7 +53,9 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
     public async Task BeNotExists()
     {
         var settings = _fixture.Settings;
-        using var client = new StorageClient(new StorageSettings
+        
+        // don't dispose it
+        var client = new StorageClient(new StorageSettings
         {
             AccessKey = settings.AccessKey,
             Bucket = _fixture.Create<string>(),
@@ -61,7 +63,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
             Port = settings.Port,
             SecretKey = settings.SecretKey,
             UseHttps = settings.UseHttps
-        });
+        }, _fixture.HttpClient);
 
         var bucketExistsResult = await client.BucketExists(_cancellation);
 

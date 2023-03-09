@@ -9,12 +9,24 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     private readonly CancellationToken _cancellation;
     private readonly StorageClient _client;
     private readonly StorageFixture _fixture;
+    private readonly StorageClient _notExistsBucketClient; // don't dispose it
 
     public ObjectShould(StorageFixture fixture)
     {
         _cancellation = CancellationToken.None;
         _client = fixture.StorageClient;
         _fixture = fixture;
+
+        var settings = _fixture.Settings;
+        _notExistsBucketClient = new StorageClient(new StorageSettings
+        {
+            AccessKey = settings.AccessKey,
+            Bucket = _fixture.Create<string>(),
+            EndPoint = settings.EndPoint,
+            Port = settings.Port,
+            SecretKey = settings.SecretKey,
+            UseHttps = settings.UseHttps
+        }, _fixture.HttpClient);
     }
 
     [Fact]
@@ -257,6 +269,38 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     }
 
     [Fact]
+    public Task NotThrowIfFileExistsWithNotExistsBucket()
+    {
+        return _notExistsBucketClient
+            .Invoking(client => client.FileExists(_fixture.Create<string>(), _cancellation))
+            .Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task NotThrowIfGetFileUrlWithNotExistsBucket()
+    {
+        var result = await _notExistsBucketClient
+            .Invoking(client => client.GetFileUrl(_fixture.Create<string>(), TimeSpan.FromSeconds(100), _cancellation))
+            .Should().NotThrowAsync();
+
+        result
+            .Which
+            .Should().BeNull();
+    }
+
+    [Fact]
+    public async Task NotThrowIfFileGetWithNotExistsBucket()
+    {
+        var result = await _notExistsBucketClient
+            .Invoking(client => client.GetFile(_fixture.Create<string>(), _cancellation))
+            .Should().NotThrowAsync();
+
+        result
+            .Which.Exists
+            .Should().BeFalse();
+    }
+
+    [Fact]
     public async Task NotThrowIfGetNotExistsFile()
     {
         var fileName = _fixture.Create<string>();
@@ -272,6 +316,32 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
             .Invoking(client => client.DeleteFile(_fixture.Create<string>(), _cancellation))
             .Should().NotThrowAsync();
     }
+
+    [Fact]
+    public async Task ThrowIfBucketNotExists()
+    {
+        var fileArray = StorageFixture.GetByteArray();
+        var fileName = _fixture.Create<string>();
+        var fileStream = StorageFixture.GetByteStream();
+
+        await _notExistsBucketClient
+            .Invoking(client => client.DeleteFile(fileName, _cancellation))
+            .Should().ThrowAsync<HttpRequestException>();
+
+        await _notExistsBucketClient
+            .Invoking(client => client.PutFile(fileName, fileStream, StorageFixture.StreamContentType, _cancellation))
+            .Should().ThrowAsync<HttpRequestException>();
+
+        await _notExistsBucketClient
+            .Invoking(client => client.PutFile(fileName, fileArray, StorageFixture.StreamContentType, _cancellation))
+            .Should().ThrowAsync<HttpRequestException>();
+
+        await _notExistsBucketClient
+            .Invoking(client =>
+                client.PutFileMultipart(fileName, fileStream, StorageFixture.StreamContentType, _cancellation))
+            .Should().ThrowAsync<HttpRequestException>();
+    }
+
 
     private async Task<string> CreateTestFile(
         string? fileName = null,

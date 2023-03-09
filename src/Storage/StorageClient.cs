@@ -38,7 +38,7 @@ public sealed class StorageClient : IDisposable
 
         var scheme = settings.UseHttps ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
         var port = settings.Port.HasValue ? $":{settings.Port}" : string.Empty;
-        
+
         _bucket = ($"{scheme}://{settings.EndPoint}{port}/{settings.Bucket}");
         _client = client ?? new HttpClient();
         _endpoint = $"{settings.EndPoint}{port}";
@@ -186,6 +186,87 @@ public sealed class StorageClient : IDisposable
             : null;
     }
 
+    public async Task<bool> MultipartAbort(string fileName, string uploadId, CancellationToken cancellation)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"{_bucket}/{fileName}?uploadId={uploadId}");
+        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
+
+        return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK};
+    }
+
+    /// <summary>
+    /// Completes multipart upload operation
+    /// </summary>
+    /// <param name="fileName">Name of file</param>
+    /// <param name="uploadId">Identity of upload</param>
+    /// <param name="partTags">Tags of parts, sorted by partNumber</param>
+    /// <param name="cancellation">Cancellation token</param>
+    /// <returns>Returns <b>true</b> if file has been uploaded or <b>false</b> if not</returns>
+    public async Task<bool> MultipartComplete(
+        string fileName, string uploadId, ArraySegment<string> partTags,
+        CancellationToken cancellation)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{_bucket}/{fileName}?uploadId={uploadId}");
+        var builder = StringUtils.GetBuilder();
+
+        builder.Append("<CompleteMultipartUpload>");
+        for (var i = 0; i < partTags.Count; i++)
+        {
+            builder.Append("<Part>");
+            builder.Append("<PartNumber>", i + 1, "</PartNumber>");
+            builder.Append("<ETag>", partTags[i], "</ETag>");
+            builder.Append("</Part>");
+        }
+
+        var data = builder
+            .Append("</CompleteMultipartUpload>")
+            .Flush();
+
+        using var content = new StringContent(data, Encoding.UTF8);
+        request.Content = content;
+
+        using var response = await Send(request, HashHelper.GetPayloadHash(data), cancellation);
+        return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK};
+    }
+
+    public async Task<string> MultipartStart(string fileName, string fileType, CancellationToken cancellation)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{_bucket}/{fileName}?uploads");
+
+        using var content = new ByteArrayContent(Array.Empty<byte>());
+        content.Headers.Add("content-type", fileType);
+        request.Content = content;
+
+        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
+        if (response.StatusCode == HttpStatusCode.OK)
+        {
+            return MultipartUploadResult.GetUploadId(await response.Content.ReadAsStreamAsync(cancellation));
+        }
+
+        Errors.UnexpectedResult(response);
+        return string.Empty;
+    }
+
+    public async Task<string?> MultipartUpload(
+        string fileName, string uploadId,
+        int partNumber, byte[] partData, int partSize,
+        CancellationToken cancellation)
+    {
+        var uri = $"{_bucket}/{fileName}?partNumber={partNumber}&uploadId={uploadId}";
+        using var request = new HttpRequestMessage(HttpMethod.Put, uri);
+
+        using var content = new ByteArrayContent(partData, 0, partSize);
+        content.Headers.Add("content-length", partSize.ToString());
+        request.Content = content;
+
+        var payloadHash = HashHelper.GetPayloadHash(partData.AsSpan(0, partSize));
+        using var response = await Send(request, payloadHash, cancellation);
+
+        return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK}
+            ? response.Headers.ETag?.Tag
+            : null;
+    }
+
     public async Task<bool> PutFile(string fileName, Stream data, string contentType, CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Put, fileName);
@@ -236,8 +317,7 @@ public sealed class StorageClient : IDisposable
         var dataLength = data.Length;
         fileName = HttpHelper.EncodeName(fileName);
 
-        var uploadId = await UploadChunksStart(fileName, contentType, cancellation);
-        if (string.IsNullOrEmpty(uploadId)) return false;
+        var uploadId = await MultipartStart(fileName, contentType, cancellation);
 
         var bufferPool = ArrayPool<byte>.Shared;
         var stringPool = ArrayPool<string>.Shared;
@@ -246,18 +326,18 @@ public sealed class StorageClient : IDisposable
         var chunkNumber = 0;
         var buffer = bufferPool.Rent(partSize);
 
-        while (data.Position != dataLength)
+        while (data.Position < dataLength)
         {
             chunkNumber += 1;
             var chunkSize = await data.ReadAsync(buffer, cancellation);
 
-            var eTag = await UploadChunk(fileName, uploadId, chunkNumber, buffer, chunkSize, cancellation);
+            var eTag = await MultipartUpload(fileName, uploadId, chunkNumber, buffer, chunkSize, cancellation);
             if (string.IsNullOrEmpty(eTag))
             {
                 bufferPool.Return(buffer);
                 stringPool.Return(chunkTags);
 
-                await UploadChunkAbort(fileName, uploadId, cancellation);
+                await MultipartAbort(fileName, uploadId, cancellation);
                 return false;
             }
 
@@ -267,10 +347,10 @@ public sealed class StorageClient : IDisposable
         bufferPool.Return(buffer);
 
         var tags = new ArraySegment<string>(chunkTags, 0, chunkNumber);
-        var uploadEndResult = await UploadChunksEnd(fileName, uploadId, tags, cancellation);
+        var uploadEndResult = await MultipartComplete(fileName, uploadId, tags, cancellation);
         if (!uploadEndResult)
         {
-            await UploadChunkAbort(fileName, uploadId, cancellation);
+            await MultipartAbort(fileName, uploadId, cancellation);
             return false;
         }
 
@@ -329,75 +409,6 @@ public sealed class StorageClient : IDisposable
         headers.TryAddWithoutValidation("Authorization", _http.BuildHeader(now, signature));
 
         return _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
-    }
-
-    private async Task<string?> UploadChunk(
-        string fileName, string uploadId,
-        int chunkNumber, byte[] chunkData, int chunkSize,
-        CancellationToken cancellation)
-    {
-        var uri = $"{_bucket}/{fileName}?partNumber={chunkNumber}&uploadId={uploadId}";
-        using var request = new HttpRequestMessage(HttpMethod.Put, uri);
-
-        using var content = new ByteArrayContent(chunkData, 0, chunkSize);
-        content.Headers.Add("content-length", chunkSize.ToString());
-        request.Content = content;
-
-        var payloadHash = HashHelper.GetPayloadHash(chunkData.AsSpan(0, chunkSize));
-        using var response = await Send(request, payloadHash, cancellation);
-
-        return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK}
-            ? response.Headers.ETag?.Tag
-            : null;
-    }
-
-    private async Task<bool> UploadChunkAbort(string fileName, string uploadId, CancellationToken cancellation)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Delete, $"{_bucket}/{fileName}?uploadId={uploadId}");
-        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
-
-        return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK};
-    }
-
-    private async Task<bool> UploadChunksEnd(
-        string fileName, string uploadId, ArraySegment<string> chunkTags,
-        CancellationToken cancellation)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{_bucket}/{fileName}?uploadId={uploadId}");
-        var builder = StringUtils.GetBuilder();
-
-        builder.Append("<CompleteMultipartUpload>");
-        for (var i = 0; i < chunkTags.Count; i++)
-        {
-            builder.Append("<Part>");
-            builder.Append("<PartNumber>", i + 1, "</PartNumber>");
-            builder.Append("<ETag>", chunkTags[i], "</ETag>");
-            builder.Append("</Part>");
-        }
-
-        var data = builder
-            .Append("</CompleteMultipartUpload>")
-            .Flush();
-
-        using var content = new StringContent(data, Encoding.UTF8);
-        request.Content = content;
-
-        using var response = await Send(request, HashHelper.GetPayloadHash(data), cancellation);
-        return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK};
-    }
-
-    private async Task<string?> UploadChunksStart(string fileName, string fileType, CancellationToken cancellation)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{_bucket}/{fileName}?uploads");
-
-        using var content = new ByteArrayContent(Array.Empty<byte>());
-        content.Headers.Add("content-type", fileType);
-        request.Content = content;
-
-        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
-        return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK}
-            ? MultipartUploadResult.GetUploadId(await response.Content.ReadAsStreamAsync(cancellation))
-            : null;
     }
 
     public void Dispose()
