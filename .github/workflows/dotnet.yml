@@ -23,23 +23,14 @@ jobs:
           dotnet-version: 7.0.x
       - name: Build with dotnet
         run: dotnet build -c Release
-      - name: Setup minio
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          mkdir -p ~/minio/data
-
-          docker run \
-          -p 9000:9000 \
-          -p 9090:9090 \
-          --name minio \
-          -v ~/minio/data:/data \
-          -e "MINIO_ROOT_USER=ROOTUSER" \
-          -e "MINIO_ROOT_PASSWORD=ChangeMe123" \
-          quay.io/minio/minio server /data --console-address ":9090"
       - name: Run tests with coverage
-        if: startsWith(matrix.os, 'ubuntu')
         env:
-          GITHUB: true
+          STORAGE_KEY: ${{ secrets.STORAGE_KEY_TOKEN }}
+          STORAGE_SECRET: ${{ secrets.STORAGE_SECRET_TOKEN }}
+          STORAGE_BUCKET: ${{ secrets.STORAGE_BUCKET_TOKEN }}
+          STORAGE_ENDPOINT: ${{ secrets.STORAGE_ENDPOINT_TOKEN }}
+          STORAGE_HTTPS: true
+          STORAGE_PORT: null
         run: |
           cd ./src/Storage.Tests/
           dotnet test -c Release --no-build /p:CollectCoverage=true /p:CoverletOutput=TestResults/ /p:CoverletOutputFormat=opencover /p:Exclude="[*]Storage.Benchmark.*"
