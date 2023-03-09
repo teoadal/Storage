@@ -191,7 +191,7 @@ public sealed class StorageClient : IDisposable
         using var request = new HttpRequestMessage(HttpMethod.Delete, $"{_bucket}/{fileName}?uploadId={uploadId}");
         using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
 
-        return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK};
+        return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.NoContent};
     }
 
     /// <summary>

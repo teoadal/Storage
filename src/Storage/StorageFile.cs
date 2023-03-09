@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Runtime.CompilerServices;
 
@@ -69,6 +70,7 @@ public readonly struct StorageFile : IAsyncDisposable, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator bool(StorageFile file) => file._response.IsSuccessStatusCode;
 
+    [ExcludeFromCodeCoverage]
     public override string ToString()
     {
         if (_response.IsSuccessStatusCode) return $"OK (Length = {Length})";

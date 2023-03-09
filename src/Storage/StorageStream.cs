@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace Storage;
 
@@ -43,19 +44,27 @@ internal sealed class StorageStream : Stream
         _stream = stream;
     }
 
-    public override void Flush() => _stream.Flush();
-
     public override int Read(byte[] buffer, int offset, int count) => _stream.Read(buffer, offset, count);
-
-    public override long Seek(long offset, SeekOrigin origin) => _stream.Seek(offset, origin);
-
-    public override void SetLength(long value) => _stream.SetLength(value);
-
-    public override void Write(byte[] buffer, int offset, int count) => _stream.Write(buffer, offset, count);
 
     protected override void Dispose(bool disposing)
     {
         _stream.Dispose();
         _response.Dispose();
     }
+
+    #region Contract
+
+    [ExcludeFromCodeCoverage]
+    public override void Flush() => _stream.Flush();
+
+    [ExcludeFromCodeCoverage]
+    public override long Seek(long offset, SeekOrigin origin) => _stream.Seek(offset, origin);
+
+    [ExcludeFromCodeCoverage]
+    public override void SetLength(long value) => _stream.SetLength(value);
+
+    [ExcludeFromCodeCoverage]
+    public override void Write(byte[] buffer, int offset, int count) => _stream.Write(buffer, offset, count);
+
+    #endregion
 }

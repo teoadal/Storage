@@ -30,6 +30,28 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     }
 
     [Fact]
+    public async Task AboutMultipartUpload()
+    {
+        var fileName = _fixture.Create<string>();
+
+        var uploadId = await _client.MultipartStart(fileName, StorageFixture.StreamContentType, _cancellation);
+
+
+        var part = StorageFixture.GetByteArray();
+        await _client
+            .Invoking(client => client.MultipartUpload(fileName, uploadId, 1, part, part.Length, _cancellation))
+            .Should().NotThrowAsync();
+
+        var abortResult = await _client
+            .Invoking(client => client.MultipartAbort(fileName, uploadId, _cancellation))
+            .Should().NotThrowAsync();
+
+        abortResult
+            .Which
+            .Should().BeTrue();
+    }
+
+    [Fact]
     public void BuildUrl()
     {
         var fileName = _fixture.Create<string>();
@@ -79,6 +101,18 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 
         var fileStream = fileGetResult.GetStream();
         await fileStream.DisposeAsync();
+
+        await DeleteTestFile(fileName);
+    }
+
+    [Fact]
+    public async Task DisposeStorageFile()
+    {
+        var fileName = await CreateTestFile();
+        await using var fileGetResult = await _client.GetFile(fileName, _cancellation);
+
+        // ReSharper disable once MethodHasAsyncOverload
+        fileGetResult.Dispose();
 
         await DeleteTestFile(fileName);
     }
