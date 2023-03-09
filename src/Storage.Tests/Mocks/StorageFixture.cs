@@ -27,9 +27,6 @@ public sealed class StorageFixture : IDisposable
         var environmentHttps = Environment.GetEnvironmentVariable("STORAGE_HTTPS");
         var https = !string.IsNullOrEmpty(environmentHttps) && bool.Parse(environmentHttps);
 
-        var environmentHttps2 = Environment.GetEnvironmentVariable("STORAGE_HTTPS2");
-        var https2 = !string.IsNullOrEmpty(environmentHttps2) && bool.Parse(environmentHttps2);
-
         Settings = new StorageSettings
         {
             AccessKey = Environment.GetEnvironmentVariable("STORAGE_KEY") ?? "ROOTUSER",
@@ -37,8 +34,7 @@ public sealed class StorageFixture : IDisposable
             EndPoint = Environment.GetEnvironmentVariable("STORAGE_ENDPOINT") ?? "localhost",
             Port = port,
             SecretKey = Environment.GetEnvironmentVariable("STORAGE_SECRET") ?? "ChangeMe123",
-            UseHttps = https,
-            UseHttp2 = https2
+            UseHttps = https
         };
 
         HttpClient = new HttpClient();
