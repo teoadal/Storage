@@ -5,6 +5,29 @@ namespace Storage;
 
 internal sealed class StorageStream : Stream
 {
+    public override long Length
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _response.Content.Headers.ContentLength ?? _stream.Length;
+    }
+
+    private readonly Stream _stream;
+    private readonly HttpResponseMessage _response;
+
+    public StorageStream(HttpResponseMessage response, Stream stream)
+    {
+        _response = response;
+        _stream = stream;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        _stream.Dispose();
+        _response.Dispose();
+    }
+
+    #region Contract
+
     public override bool CanRead
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -23,39 +46,17 @@ internal sealed class StorageStream : Stream
         get => _stream.CanWrite;
     }
 
-    public override long Length
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _response.Content.Headers.ContentLength ?? _stream.Length;
-    }
+    [ExcludeFromCodeCoverage]
+    public override void Flush() => _stream.Flush();
 
+    [ExcludeFromCodeCoverage]
     public override long Position
     {
         get => _stream.Position;
         set => _stream.Position = value;
     }
 
-    private readonly Stream _stream;
-    private readonly HttpResponseMessage _response;
-
-    public StorageStream(HttpResponseMessage response, Stream stream)
-    {
-        _response = response;
-        _stream = stream;
-    }
-
     public override int Read(byte[] buffer, int offset, int count) => _stream.Read(buffer, offset, count);
-
-    protected override void Dispose(bool disposing)
-    {
-        _stream.Dispose();
-        _response.Dispose();
-    }
-
-    #region Contract
-
-    [ExcludeFromCodeCoverage]
-    public override void Flush() => _stream.Flush();
 
     [ExcludeFromCodeCoverage]
     public override long Seek(long offset, SeekOrigin origin) => _stream.Seek(offset, origin);

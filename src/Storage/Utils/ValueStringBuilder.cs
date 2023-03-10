@@ -17,12 +17,6 @@ internal ref struct ValueStringBuilder
         _length = 0;
     }
 
-    public readonly int Length
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _length;
-    }
-
     #region Append
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -106,9 +100,6 @@ internal ref struct ValueStringBuilder
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly ReadOnlySpan<char> AsReadonlySpan() => _buffer[.._length];
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Clear() => _length = 0;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose()

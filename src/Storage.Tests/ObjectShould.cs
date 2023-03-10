@@ -52,6 +52,42 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     }
 
     [Fact]
+    public async Task AllowParallelUploadMultipleFiles()
+    {
+        const int parallelization = 10;
+
+        var file = _fixture.Create<string>();
+        var tasks = new Task<bool>[parallelization];
+        for (var i = 0; i < parallelization; i++)
+        {
+            var fileData = StorageFixture.GetByteStream(12 * 1024 * 1024);
+            var fileName = $"{file}-{i}";
+            tasks[i] = Task.Run(async () =>
+            {
+                await _client.UploadFile(fileName, fileData, StorageFixture.StreamContentType, _cancellation);
+                if (!await _client.FileExists(fileName, _cancellation)) return false;
+                await _client.DeleteFile(fileName, _cancellation);
+                return true;
+            }, _cancellation);
+        }
+
+        await Task.WhenAll(tasks);
+
+        foreach (var task in tasks)
+        {
+            task
+                .IsCompletedSuccessfully
+                .Should().BeTrue();
+
+            task
+                .Result
+                .Should().BeTrue();
+
+            task.Dispose();
+        }
+    }
+
+    [Fact]
     public void BuildUrl()
     {
         var fileName = _fixture.Create<string>();
@@ -162,6 +198,8 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
         var fileName = await CreateTestFile(contentType: contentType);
         await using var fileGetResult = await _client.GetFile(fileName, _cancellation);
 
+        ((bool) fileGetResult).Should().BeTrue();
+
         fileGetResult
             .ContentType
             .Should().Be(contentType);
@@ -194,6 +232,11 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
         fileStream.CanSeek.Should().BeFalse();
         fileStream.CanWrite.Should().BeFalse();
         fileStream.Length.Should().Be(length);
+
+        fileStream
+            .Invoking(stream => stream.Position)
+            .Should().Throw<NotSupportedException>();
+
 
         await fileStream.DisposeAsync();
         await fileStream.DisposeAsync();
@@ -260,7 +303,6 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
         await DeleteTestFile(fileName);
     }
 
-
     [Fact]
     public async Task Upload()
     {
@@ -311,7 +353,7 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     }
 
     [Fact]
-    public async Task NotThrowIfGetFileUrlWithNotExistsBucket()
+    public async Task NotThrowIfFileGetUrlWithNotExistsBucket()
     {
         var result = await _notExistsBucketClient
             .Invoking(client => client.GetFileUrl(_fixture.Create<string>(), TimeSpan.FromSeconds(100), _cancellation))
@@ -329,8 +371,12 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
             .Invoking(client => client.GetFile(_fixture.Create<string>(), _cancellation))
             .Should().NotThrowAsync();
 
-        result
-            .Which.Exists
+        var getFileResult = result.Which;
+
+        ((bool) getFileResult).Should().BeFalse();
+
+        getFileResult
+            .Exists
             .Should().BeFalse();
     }
 

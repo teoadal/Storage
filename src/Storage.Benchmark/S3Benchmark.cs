@@ -148,7 +148,7 @@ public class S3Benchmark
 
     #region Configuration
 
-    private string _bucket;
+    private string _bucket = null!;
     private CancellationToken _cancellation;
     private Stream _inputData = null!;
     private string _fileId = null!;
