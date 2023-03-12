@@ -187,6 +187,40 @@ public sealed class StorageClient : IDisposable
             : null;
     }
 
+    /// <summary>
+    /// Returns a list of files (only 1000 first) by <paramref name="prefix"/>  
+    /// </summary>
+    /// <param name="prefix">Prefix of file names</param>
+    /// <param name="cancellation">Cancellation token</param>
+    /// <returns>Async collection of file names</returns>
+    public async IAsyncEnumerable<string> List(
+        string? prefix,
+        [EnumeratorCancellation] CancellationToken cancellation)
+    {
+        var url = string.IsNullOrEmpty(prefix)
+            ? $"{_bucket}?list-type=2"
+            : $"{_bucket}?list-type=2&prefix={HttpHelper.EncodeName(prefix)}";
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+        using var response = await Send(request, EmptyPayloadHash, cancellation);
+        if (response.StatusCode == HttpStatusCode.OK)
+        {
+            await using var responseStream = await response.Content.ReadAsStreamAsync(cancellation);
+            while (responseStream.CanRead)
+            {
+                var readString = XmlStreamReader.ReadString(responseStream, "Key");
+                if (string.IsNullOrEmpty(readString)) break;
+
+                yield return readString;
+            }
+
+            yield break;
+        }
+
+        Errors.UnexpectedResult(response);
+    }
+
     public async Task<bool> MultipartAbort(string fileName, string uploadId, CancellationToken cancellation)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, $"{_bucket}/{fileName}?uploadId={uploadId}");
@@ -241,7 +275,8 @@ public sealed class StorageClient : IDisposable
         using var response = await Send(request, EmptyPayloadHash, cancellation);
         if (response.StatusCode == HttpStatusCode.OK)
         {
-            return MultipartUploadResult.GetUploadId(await response.Content.ReadAsStreamAsync(cancellation));
+            await using var responseStream = await response.Content.ReadAsStreamAsync(cancellation);
+            return XmlStreamReader.ReadString(responseStream, "UploadId");
         }
 
         Errors.UnexpectedResult(response);
