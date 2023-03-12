@@ -15,6 +15,17 @@ public sealed class ClientShould : IClassFixture<StorageFixture>
     }
 
     [Fact]
+    public void DeserializeSettingsJson()
+    {
+        var expected = _fixture.Settings;
+        
+        var json = System.Text.Json.JsonSerializer.Serialize(expected);
+        var actual = System.Text.Json.JsonSerializer.Deserialize<StorageSettings>(json);
+
+        actual.Should().BeEquivalentTo(expected);
+    }
+    
+    [Fact]
     public void HasValidInfo()
     {
         _client

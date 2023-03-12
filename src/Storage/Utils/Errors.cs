@@ -1,12 +1,16 @@
-﻿namespace Storage.Utils;
+﻿using System.Runtime.CompilerServices;
+
+namespace Storage.Utils;
 
 internal static class Errors
 {
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static void CantFormatToString<T>(T value) where T : struct
     {
         throw new Exception($"Can't format '{value}' to string");
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static void UnexpectedResult(HttpResponseMessage response)
     {
         var reason = response.ReasonPhrase ?? response.ToString();

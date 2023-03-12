@@ -6,6 +6,7 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Storage.Utils;
+using static Storage.Utils.HashHelper;
 
 namespace Storage;
 
@@ -66,7 +67,7 @@ public sealed class StorageClient : IDisposable
     public async Task<bool> CreateBucket(CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Put);
-        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, EmptyPayloadHash, cancellation);
 
         switch (response.StatusCode)
         {
@@ -83,7 +84,7 @@ public sealed class StorageClient : IDisposable
     public async Task<bool> BucketExists(CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Head);
-        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, EmptyPayloadHash, cancellation);
 
         switch (response.StatusCode)
         {
@@ -100,7 +101,7 @@ public sealed class StorageClient : IDisposable
     public async Task<bool> DeleteBucket(CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Delete);
-        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, EmptyPayloadHash, cancellation);
 
         switch (response.StatusCode)
         {
@@ -124,7 +125,7 @@ public sealed class StorageClient : IDisposable
     public async Task DeleteFile(string fileName, CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Delete, fileName);
-        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, EmptyPayloadHash, cancellation);
 
         if (response.StatusCode != HttpStatusCode.NoContent) Errors.UnexpectedResult(response);
     }
@@ -132,7 +133,7 @@ public sealed class StorageClient : IDisposable
     public async Task<bool> FileExists(string fileName, CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Head, fileName);
-        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, EmptyPayloadHash, cancellation);
 
         switch (response.StatusCode)
         {
@@ -156,7 +157,7 @@ public sealed class StorageClient : IDisposable
     public async Task<StorageFile> GetFile(string fileName, CancellationToken cancellation)
     {
         using var request = CreateRequest(HttpMethod.Get, fileName);
-        var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
+        var response = await Send(request, EmptyPayloadHash, cancellation);
 
         switch (response.StatusCode)
         {
@@ -189,7 +190,7 @@ public sealed class StorageClient : IDisposable
     public async Task<bool> MultipartAbort(string fileName, string uploadId, CancellationToken cancellation)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, $"{_bucket}/{fileName}?uploadId={uploadId}");
-        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, EmptyPayloadHash, cancellation);
 
         return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.NoContent};
     }
@@ -225,7 +226,7 @@ public sealed class StorageClient : IDisposable
         using var content = new StringContent(data, Encoding.UTF8);
         request.Content = content;
 
-        using var response = await Send(request, HashHelper.GetPayloadHash(data), cancellation);
+        using var response = await Send(request, GetPayloadHash(data), cancellation);
         return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK};
     }
 
@@ -237,7 +238,7 @@ public sealed class StorageClient : IDisposable
         content.Headers.Add("content-type", fileType);
         request.Content = content;
 
-        using var response = await Send(request, HashHelper.EmptyPayloadHash, cancellation);
+        using var response = await Send(request, EmptyPayloadHash, cancellation);
         if (response.StatusCode == HttpStatusCode.OK)
         {
             return MultipartUploadResult.GetUploadId(await response.Content.ReadAsStreamAsync(cancellation));
@@ -259,7 +260,7 @@ public sealed class StorageClient : IDisposable
         content.Headers.Add("content-length", partSize.ToString());
         request.Content = content;
 
-        var payloadHash = HashHelper.GetPayloadHash(partData.AsSpan(0, partSize));
+        var payloadHash = GetPayloadHash(partData.AsSpan(0, partSize));
         using var response = await Send(request, payloadHash, cancellation);
 
         return response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK}
@@ -279,7 +280,7 @@ public sealed class StorageClient : IDisposable
         content.Headers.Add("content-type", contentType);
         request.Content = content;
 
-        var payloadHash = HashHelper.GetPayloadHash(buffer.AsSpan(0, dataSize));
+        var payloadHash = GetPayloadHash(buffer.AsSpan(0, dataSize));
         bufferPool.Return(buffer);
 
         using var response = await Send(request, payloadHash, cancellation);
@@ -299,7 +300,7 @@ public sealed class StorageClient : IDisposable
         content.Headers.Add("content-type", contentType);
         request.Content = content;
 
-        using var response = await Send(request, HashHelper.GetPayloadHash(data), cancellation);
+        using var response = await Send(request, GetPayloadHash(data), cancellation);
 
         if (response.StatusCode == HttpStatusCode.OK) return true;
         Errors.UnexpectedResult(response);

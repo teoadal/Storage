@@ -20,7 +20,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
     public async Task CreateBucket()
     {
         var settings = _fixture.Settings;
-        
+
         // don't use using here
         var client = new StorageClient(new StorageSettings
         {
@@ -53,7 +53,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
     public async Task BeNotExists()
     {
         var settings = _fixture.Settings;
-        
+
         // don't dispose it
         var client = new StorageClient(new StorageSettings
         {
@@ -78,12 +78,12 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
             .Invoking(client => client.CreateBucket(_cancellation))
             .Should().NotThrowAsync();
     }
-    
+
     [Fact]
     public Task NotThrowIfDeleteNotExistsBucket()
     {
         var settings = _fixture.Settings;
-        
+
         // don't use using here
         var client = new StorageClient(new StorageSettings
         {
@@ -94,7 +94,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
             SecretKey = settings.SecretKey,
             UseHttps = settings.UseHttps
         }, _fixture.HttpClient);
-        
+
         return client
             .Invoking(c => c.DeleteBucket(_cancellation))
             .Should().NotThrowAsync();
