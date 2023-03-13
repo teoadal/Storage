@@ -186,6 +186,33 @@ await storageClient.DeleteFile(fileName, cancellationToken);
 Console.WriteLine("Файл удалён, если он, конечно, существовал");
 ```
 
-## Тесты
+## Измерение производительности
 
 Локальное тестирование и измерение производительности осуществляется с помощью Minio в Docker'e по http. Понимаю, что это не самый хороший способ, но зато он самый доступный и простой.
+
+1. [Установим](https://min.io/docs/minio/container/index.html) Minio в Docker. Я поднимаю через `docker-compose` примерно вот так:
+    ```yaml
+   services:
+    minio:
+    image: quay.io/minio/minio
+    command: server /data --console-address ":9090"
+    expose:
+      - "9000"
+      - "9090"
+    ports:
+      - "5300:9000"
+      - "5301:9090"
+    environment:
+      MINIO_ROOT_USER: "ROOTUSER"
+      MINIO_ROOT_PASSWORD: "ChangeMe123"
+    volumes:
+      - minio-data:/data
+       
+   volumes:
+      minio-data:
+    ```
+2. Если мы используем настройки выше, то необходимо обратить внимание на то, что порт Minio изменён на 5300 (стандартный - 9000).
+3. Убедимся, что консоль Minio открывается, bucket'ы и файлы можно создать.
+4. В проекте с becnhmark'ами лежит `appsettings.json`. Убедимся, что в нём указаны правильные настройки до Minio.
+5. В том же файле есть свойство `BigFilePath` - это путь до файла размером больше 100МБ. По-умолчанию в becnchmark'е используется случайный набор байт для иммитации файла. Мы можем использовать реальный файл для получения циферок.
+6. Кажется, что bechmark настроен корректно и его можно запускать в `Release` варианте.

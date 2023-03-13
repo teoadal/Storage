@@ -10,16 +10,26 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.5"/>
+        <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.5" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Minio" Version="4.0.7"/>
-        <PackageReference Include="AWSSDK.S3" Version="3.7.103.21"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="7.0.3" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
+        <PackageReference Include="Minio" Version="4.0.7" />
+        <PackageReference Include="AWSSDK.S3" Version="3.7.103.21" />
     </ItemGroup>
 
 
     <ItemGroup>
-        <ProjectReference Include="..\Storage\Storage.csproj"/>
+        <ProjectReference Include="..\Storage\Storage.csproj" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+      <None Remove="appsettings.json" />
+      <Content Include="appsettings.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
     </ItemGroup>
 </Project>
