@@ -1,0 +1,26 @@
+services:
+  minio:
+    image: quay.io/minio/minio
+    command: server /data --console-address ":9090"
+    expose:
+      - "9000"
+      - "9090"
+    ports:
+      - "5300:9000"
+      - "5301:9090"
+    environment:
+      MINIO_ROOT_USER: "ROOTUSER"
+      MINIO_ROOT_PASSWORD: "ChangeMe123"
+    volumes:
+      - minio-data:/data
+
+  benchmark:
+    image: s3-benchmark
+    depends_on:
+      - minio
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+volumes:
+  minio-data:

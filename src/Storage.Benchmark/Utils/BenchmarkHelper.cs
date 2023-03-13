@@ -62,9 +62,29 @@ internal static class BenchmarkHelper
     public static StorageSettings ReadSettings(IConfiguration config)
     {
         var settings = config.GetRequiredSection("S3Storage").Get<StorageSettings>();
-        return settings == null || string.IsNullOrEmpty(settings.EndPoint)
-            ? throw new Exception("S3Storage configuration is not found")
-            : settings;
+        if (settings == null || string.IsNullOrEmpty(settings.EndPoint))
+        {
+            throw new Exception("S3Storage configuration is not found");
+        }
+
+        var isContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER");
+        if (isContainer != null && bool.TryParse(isContainer, out var value) && value)
+        {
+            settings = new StorageSettings
+            {
+                AccessKey = settings.AccessKey,
+                Bucket = settings.Bucket,
+                EndPoint = "host.docker.internal",
+                Port = settings.Port,
+                Region = settings.Region,
+                SecretKey = settings.SecretKey,
+                Service = settings.Service,
+                UseHttp2 = settings.UseHttp2,
+                UseHttps = settings.UseHttps,
+            };
+        }
+
+        return settings;
     }
 
     public static InputStream ReadSmallFile(IConfiguration config)

@@ -1,6 +1,11 @@
 ﻿using BenchmarkDotNet.Running;
-using Storage.Benchmark;
 
-//BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, new DebugInProcessConfig());
+namespace Storage.Benchmark;
 
-BenchmarkRunner.Run<S3Benchmark>();
+public static class Program
+{
+    public static void Main(string[] args)
+    {
+        BenchmarkRunner.Run<S3Benchmark>();
+    }
+}
