@@ -237,7 +237,6 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
             .Invoking(stream => stream.Position)
             .Should().Throw<NotSupportedException>();
 
-
         await fileStream.DisposeAsync();
         await fileStream.DisposeAsync();
 
