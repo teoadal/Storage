@@ -9,8 +9,8 @@ using Storage.Benchmark.Utils;
 namespace Storage.Benchmark;
 
 [SimpleJob(RuntimeMoniker.Net70)]
-//[SimpleJob(RuntimeMoniker.NativeAot70)]
-[MeanColumn, MemoryDiagnoser]
+[MeanColumn]
+[MemoryDiagnoser]
 public class S3Benchmark
 {
     [Benchmark]
@@ -152,6 +152,7 @@ public class S3Benchmark
     private Stream _inputData = null!;
     private string _fileId = null!;
     private MemoryStream _outputData = null!;
+    private StorageSettings _settings = null!;
 
     private IAmazonS3 _amazonClient = null!;
     private TransferUtility _amazonTransfer = null!;
