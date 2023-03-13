@@ -5,13 +5,6 @@ internal sealed class InputStream : Stream
     public override bool CanRead => true;
     public override bool CanSeek => true;
     public override bool CanWrite => false;
-    public override long Length => _baseStream.Length;
-
-    public override long Position
-    {
-        get => _baseStream.Position;
-        set => _baseStream.Position = value;
-    }
 
     private readonly Stream _baseStream;
 
@@ -26,6 +19,16 @@ internal sealed class InputStream : Stream
         _baseStream.Seek(0, SeekOrigin.Begin);
     }
 
+    #region Contract
+
+    public override long Length => _baseStream.Length;
+
+    public override long Position
+    {
+        get => _baseStream.Position;
+        set => _baseStream.Position = value;
+    }
+
     public override void Flush() => _baseStream.Flush();
 
     public override int Read(byte[] buffer, int offset, int count) => _baseStream.Read(buffer, offset, count);
@@ -35,4 +38,6 @@ internal sealed class InputStream : Stream
     public override void SetLength(long value) => _baseStream.SetLength(value);
 
     public override void Write(byte[] buffer, int offset, int count) => _baseStream.Write(buffer, offset, count);
+
+    #endregion
 }

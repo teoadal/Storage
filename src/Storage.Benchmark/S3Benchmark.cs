@@ -1,11 +1,10 @@
-﻿using Amazon;
-using Amazon.Runtime;
-using Amazon.S3;
+﻿using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using Minio;
+using Storage.Benchmark.Utils;
 
 namespace Storage.Benchmark;
 
@@ -112,26 +111,26 @@ public class S3Benchmark
     {
         var result = 0;
 
-        var bucketExistsResult = await _handmadeClient.BucketExists(_cancellation);
+        var bucketExistsResult = await _storageClient.BucketExists(_cancellation);
         if (!bucketExistsResult) ThrowException();
         result++;
 
-        var fileExistsResult = await _handmadeClient.FileExists(_fileId, _cancellation);
+        var fileExistsResult = await _storageClient.FileExists(_fileId, _cancellation);
         if (fileExistsResult) ThrowException();
         result++;
 
         _inputData.Seek(0, SeekOrigin.Begin);
-        var fileUploadResult = await _handmadeClient.UploadFile(_fileId, _inputData, "application/pdf", _cancellation);
+        var fileUploadResult = await _storageClient.UploadFile(_fileId, _inputData, "application/pdf", _cancellation);
         if (!fileUploadResult) ThrowException();
 
         result++;
 
-        fileExistsResult = await _handmadeClient.FileExists(_fileId, _cancellation);
+        fileExistsResult = await _storageClient.FileExists(_fileId, _cancellation);
         if (!fileExistsResult) ThrowException();
         result++;
 
         _outputData.Seek(0, SeekOrigin.Begin);
-        var storageFile = await _handmadeClient.GetFile(_fileId, _cancellation);
+        var storageFile = await _storageClient.GetFile(_fileId, _cancellation);
         if (!storageFile) ThrowException(storageFile.ToString());
 
         await storageFile
@@ -142,7 +141,7 @@ public class S3Benchmark
 
         result++;
 
-        await _handmadeClient.DeleteFile(_fileId, _cancellation);
+        await _storageClient.DeleteFile(_fileId, _cancellation);
         return ++result;
     }
 
@@ -153,57 +152,36 @@ public class S3Benchmark
     private Stream _inputData = null!;
     private string _fileId = null!;
     private MemoryStream _outputData = null!;
-    private StorageSettings _settings = null!;
 
     private IAmazonS3 _amazonClient = null!;
     private TransferUtility _amazonTransfer = null!;
-    private StorageClient _handmadeClient = null!;
     private MinioClient _minioClient = null!;
+    private StorageClient _storageClient = null!;
 
     [GlobalSetup]
     public void Config()
     {
-        var fileData = File.ReadAllBytes("d:\\book.pdf");
+        var config = BenchmarkHelper.ReadConfiguration();
+        var settings = BenchmarkHelper.ReadSettings(config);
 
-        _bucket = "reconfig";
+        _bucket = settings.Bucket;
         _cancellation = new CancellationToken();
-        _inputData = new InputStream(fileData);
-        _outputData = new MemoryStream(new byte[fileData.Length]);
         _fileId = $"привет-как-дела{Guid.NewGuid()}";
+        _inputData = BenchmarkHelper.ReadBigFile(config);
+        _outputData = new MemoryStream(new byte[_inputData.Length]);
 
-        _settings = new StorageSettings
-        {
-            AccessKey = "ROOTUSER",
-            Bucket = _bucket,
-            EndPoint = "localhost",
-            Port = 5300,
-            SecretKey = "ChangeMe123",
-            UseHttps = false
-        };
-
-        _amazonClient = new AmazonS3Client(
-            new BasicAWSCredentials(_settings.AccessKey, _settings.SecretKey),
-            new AmazonS3Config
-            {
-                RegionEndpoint = RegionEndpoint.USEast1,
-                ServiceURL = $"http://{_settings.EndPoint}:{_settings.Port}",
-                ForcePathStyle = true // MUST be true to work correctly with MinIO server
-            });
+        _amazonClient = BenchmarkHelper.CreateAWSClient(settings);
         _amazonTransfer = new TransferUtility(_amazonClient);
+        _minioClient = BenchmarkHelper.CreateMinioClient(settings);
+        _storageClient = BenchmarkHelper.CreateStoragesClient(settings);
 
-        _handmadeClient = new StorageClient(_settings);
-
-        _minioClient = new MinioClient()
-            .WithEndpoint(_settings.EndPoint, _settings.Port.Value)
-            .WithCredentials(_settings.AccessKey, _settings.SecretKey)
-            .WithSSL(_settings.UseHttps)
-            .Build();
+        BenchmarkHelper.EnsureBucketExists(_storageClient, _cancellation);
     }
 
     [GlobalCleanup]
     public void Clear()
     {
-        _handmadeClient.Dispose();
+        _storageClient.Dispose();
         _inputData.Dispose();
         _outputData.Dispose();
     }

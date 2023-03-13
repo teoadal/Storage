@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 
@@ -122,6 +123,7 @@ internal ref struct ValueStringBuilder
 
     public void RemoveLast() => _length--;
 
+    [ExcludeFromCodeCoverage]
     public readonly override string ToString() => _length == 0
         ? string.Empty
         : _buffer[.._length].ToString();

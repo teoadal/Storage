@@ -223,7 +223,7 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     public async Task HasValidStreamInformation()
     {
         const int length = 1 * 1024 * 1024;
-        var fileName = await CreateTestFile(length: length);
+        var fileName = await CreateTestFile(size: length);
         await using var fileGetResult = await _client.GetFile(fileName, _cancellation);
 
         var fileStream = fileGetResult.GetStream();
@@ -237,11 +237,40 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
             .Invoking(stream => stream.Position)
             .Should().Throw<NotSupportedException>();
 
-
         await fileStream.DisposeAsync();
         await fileStream.DisposeAsync();
 
         await DeleteTestFile(fileName);
+    }
+
+    [Fact]
+    public async Task ListFiles()
+    {
+        const int count = 2;
+        var noiseFiles = new List<string>();
+        var expectedFileNames = new string[count];
+        var prefix = _fixture.Create<string>();
+
+        for (var i = 0; i < count; i++)
+        {
+            var fileName = $"{prefix}#{_fixture.Create<string>()}";
+            expectedFileNames[i] = await CreateTestFile(fileName: fileName, size: 1024);
+            noiseFiles.Add(await CreateTestFile());
+        }
+
+        var actualFileNames = new List<string>();
+        await foreach (var file in _client.List(prefix, _cancellation))
+        {
+            actualFileNames.Add(file);
+        }
+
+        actualFileNames
+            .Should().Contain(expectedFileNames);
+
+        foreach (var fileName in expectedFileNames.Concat(noiseFiles))
+        {
+            await DeleteTestFile(fileName);
+        }
     }
 
     [Fact]
@@ -426,10 +455,10 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     private async Task<string> CreateTestFile(
         string? fileName = null,
         string contentType = StorageFixture.StreamContentType,
-        int? length = null)
+        int? size = null)
     {
         fileName ??= _fixture.Create<string>();
-        using var data = StorageFixture.GetByteStream(length ?? 1 * 1024 * 1024); // 1 Mb
+        using var data = StorageFixture.GetByteStream(size ?? 1 * 1024 * 1024); // 1 Mb
 
         var uploadResult = await _client.UploadFile(fileName, data, contentType, _cancellation);
 
