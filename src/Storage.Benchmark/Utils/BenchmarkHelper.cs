@@ -46,13 +46,18 @@ internal static class BenchmarkHelper
         client.CreateBucket(cancellation).GetAwaiter().GetResult();
     }
 
-    public static InputStream ReadBigFile(IConfiguration config)
+    public static byte[] ReadBigArray(IConfiguration config)
     {
         var filePath = config.GetValue<string>("BigFilePath");
 
-        return new InputStream(!string.IsNullOrEmpty(filePath) && File.Exists(filePath)
+        return !string.IsNullOrEmpty(filePath) && File.Exists(filePath)
             ? File.ReadAllBytes(filePath)
-            : GetByteArray(123 * 1024 * 1024)); // 123 Mb
+            : GetByteArray(123 * 1024 * 1024); // 123 Mb
+    }
+
+    public static InputStream ReadBigFile(IConfiguration config)
+    {
+        return new InputStream(ReadBigArray(config)); // 123 Mb
     }
 
     public static IConfiguration ReadConfiguration() => new ConfigurationBuilder()

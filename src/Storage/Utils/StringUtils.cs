@@ -52,6 +52,7 @@ internal static class StringUtils
             : -1;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string Flush(this StringBuilder builder)
     {
         var result = builder.ToString();

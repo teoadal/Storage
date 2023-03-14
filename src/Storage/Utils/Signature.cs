@@ -2,7 +2,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -29,12 +28,12 @@ internal sealed class Signature
 
     public string Calculate(
         HttpRequestMessage request,
-        string payload, string[] signedHeaders, DateTime requestDate)
+        string payloadHash, string[] signedHeaders, DateTime requestDate)
     {
         var builder = new ValueStringBuilder(stackalloc char[512]);
 
         AppendStringToSign(ref builder, requestDate);
-        AppendCanonicalRequestHash(ref builder, request, signedHeaders, payload);
+        AppendCanonicalRequestHash(ref builder, request, signedHeaders, payloadHash);
 
         Span<byte> signature = stackalloc byte[32];
         CreateSigningKey(ref signature, requestDate);
@@ -200,14 +199,13 @@ internal sealed class Signature
         canonical.Append('\n');
         canonical.Append("host:");
         canonical.Append(uri.Host);
-        
+
         if (!uri.IsDefaultPort)
         {
             canonical.Append(':');
             canonical.Append(uri.Port);
-            
         }
-        
+
         canonical.Append("\n\n");
         canonical.Append("host\n");
         canonical.Append("UNSIGNED-PAYLOAD");
@@ -221,20 +219,23 @@ internal sealed class Signature
     private static void AppendSha256ToHex(ref ValueStringBuilder builder, scoped ReadOnlySpan<char> value)
     {
         var count = Encoding.UTF8.GetByteCount(value);
-        using var memory = MemoryPool<byte>.Shared.Rent(count);
-        if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
+
+        var pool = ArrayPool<byte>.Shared;
+        var byteBuffer = pool.Rent(count);
+
+        var encoded = Encoding.UTF8.GetBytes(value, byteBuffer);
+
+        Span<byte> hashBuffer = stackalloc byte[32];
+        if (SHA256.TryHashData(byteBuffer.AsSpan(0, encoded), hashBuffer, out var written))
         {
-            Encoding.UTF8.GetBytes(value, segment);
-            Span<byte> hashBuffer = stackalloc byte[32];
-            if (SHA256.TryHashData(segment, hashBuffer, out _))
+            Span<char> buffer = stackalloc char[2];
+            foreach (var element in hashBuffer[..written])
             {
-                Span<char> buffer = stackalloc char[2];
-                foreach (var element in hashBuffer)
-                {
-                    builder.Append(buffer[..StringUtils.FormatX2(ref buffer, element)]);
-                }
+                builder.Append(buffer[..StringUtils.FormatX2(ref buffer, element)]);
             }
         }
+
+        pool.Return(byteBuffer);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -280,14 +281,18 @@ internal sealed class Signature
     private static int Sign(ref Span<byte> buffer, ReadOnlySpan<byte> key, scoped ReadOnlySpan<char> content)
     {
         var count = Encoding.UTF8.GetByteCount(content);
-        using var memory = MemoryPool<byte>.Shared.Rent(count);
-        if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
-        {
-            Encoding.UTF8.GetBytes(content, segment);
-            if (HMACSHA256.TryHashData(key, segment, buffer, out var written)) return written;
-        }
 
-        return -1;
+        var pool = ArrayPool<byte>.Shared;
+        var byteBuffer = pool.Rent(count);
+
+        var encoded = Encoding.UTF8.GetBytes(content, byteBuffer);
+        var result = HMACSHA256.TryHashData(key, byteBuffer.AsSpan(0, encoded), buffer, out var written)
+            ? written
+            : -1;
+
+        pool.Return(byteBuffer);
+
+        return result;
     }
 
     private static string UnescapeString(ReadOnlySpan<char> query)

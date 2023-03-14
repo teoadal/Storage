@@ -1,5 +1,4 @@
 ﻿using System.Buffers;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Storage.Utils;
@@ -12,38 +11,36 @@ internal readonly struct HttpHelper
     public static bool AppendEncodedName(ref ValueStringBuilder builder, ReadOnlySpan<char> name)
     {
         var count = Encoding.UTF8.GetByteCount(name);
-        var encoded = false;
-        using var memory = MemoryPool<byte>.Shared.Rent(count);
+        var hasEncoded = false;
 
-        // ReSharper disable once InvertIf
-        if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
+        var pool = ArrayPool<byte>.Shared;
+        var byteBuffer = pool.Rent(count);
+        
+        Span<char> charBuffer = stackalloc char[2];
+        Span<char> upperBuffer = stackalloc char[2];
+
+        var validCharacters = ValidUrlCharacters;
+        var encoded = Encoding.UTF8.GetBytes(name, byteBuffer);
+
+        foreach (char symbol in byteBuffer.AsSpan(0, encoded))
         {
-            Span<char> charBuffer = stackalloc char[2];
-            Span<char> upperBuffer = stackalloc char[2];
-
-            var validCharacters = ValidUrlCharacters;
-            Encoding.UTF8.GetBytes(name, segment);
-
-            foreach (char symbol in segment)
+            if (validCharacters.Contains(symbol))
             {
-                if (validCharacters.Contains(symbol))
-                {
-                    builder.Append(symbol);
-                }
-                else
-                {
-                    builder.Append('%');
+                builder.Append(symbol);
+            }
+            else
+            {
+                builder.Append('%');
 
-                    StringUtils.FormatX2(ref charBuffer, symbol);
-                    MemoryExtensions.ToUpperInvariant(charBuffer, upperBuffer);
-                    builder.Append(upperBuffer);
+                StringUtils.FormatX2(ref charBuffer, symbol);
+                MemoryExtensions.ToUpperInvariant(charBuffer, upperBuffer);
+                builder.Append(upperBuffer);
 
-                    encoded = true;
-                }
+                hasEncoded = true;
             }
         }
 
-        return encoded;
+        return hasEncoded;
     }
 
     public static string EncodeName(string fileName)
