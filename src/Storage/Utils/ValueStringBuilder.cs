@@ -43,6 +43,21 @@ internal ref struct ValueStringBuilder
         {
             if (pos > _buffer.Length - written) Grow(written);
             buffer.CopyTo(_buffer[pos..]);
+
+            _length = pos + written;
+        }
+        else Errors.CantFormatToString(value);
+    }
+
+    public void Append(DateTime value, string format)
+    {
+        Span<char> buffer = stackalloc char[16];
+        var pos = _length;
+        if (value.TryFormat(buffer, out var written, format))
+        {
+            if (pos > _buffer.Length - written) Grow(written);
+            buffer.CopyTo(_buffer[pos..]);
+
             _length = pos + written;
         }
         else Errors.CantFormatToString(value);
@@ -56,6 +71,7 @@ internal ref struct ValueStringBuilder
         {
             if (pos > _buffer.Length - written) Grow(written);
             buffer.CopyTo(_buffer[pos..]);
+
             _length = pos + written;
         }
         else Errors.CantFormatToString(value);

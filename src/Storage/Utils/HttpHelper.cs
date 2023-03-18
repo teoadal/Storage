@@ -15,7 +15,7 @@ internal readonly struct HttpHelper
 
         var pool = ArrayPool<byte>.Shared;
         var byteBuffer = pool.Rent(count);
-        
+
         Span<char> charBuffer = stackalloc char[2];
         Span<char> upperBuffer = stackalloc char[2];
 
@@ -70,11 +70,10 @@ internal readonly struct HttpHelper
 
     public string BuildHeader(DateTime now, string signature)
     {
-        Span<char> buffer = stackalloc char[16];
         var builder = new ValueStringBuilder(stackalloc char[512]);
 
         builder.Append(_headerStart);
-        builder.Append(buffer[..StringUtils.Format(ref buffer, now, Signature.Iso8601Date)]);
+        builder.Append(now, Signature.Iso8601Date);
         builder.Append(_headerEnd);
         builder.Append(signature);
 
@@ -83,7 +82,6 @@ internal readonly struct HttpHelper
 
     public string BuildUrl(string bucket, string fileName, DateTime now, TimeSpan expires)
     {
-        Span<char> dateBuffer = stackalloc char[16];
         var builder = new ValueStringBuilder(stackalloc char[512]);
 
         builder.Append(bucket);
@@ -92,11 +90,11 @@ internal readonly struct HttpHelper
         AppendEncodedName(ref builder, fileName);
 
         builder.Append(_urlStart);
-        builder.Append(dateBuffer[..StringUtils.Format(ref dateBuffer, now, Signature.Iso8601Date)]);
+        builder.Append(now, Signature.Iso8601Date);
         builder.Append(_urlMiddle);
 
         builder.Append("&X-Amz-Date=");
-        builder.Append(dateBuffer[..StringUtils.Format(ref dateBuffer, now, Signature.Iso8601DateTime)]);
+        builder.Append(now, Signature.Iso8601DateTime);
         builder.Append("&X-Amz-Expires=");
         builder.Append(expires.TotalSeconds);
 

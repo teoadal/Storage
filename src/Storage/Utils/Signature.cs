@@ -241,12 +241,10 @@ internal sealed class Signature
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void AppendStringToSign(ref ValueStringBuilder builder, DateTime requestDate)
     {
-        Span<char> dateBuffer = stackalloc char[16];
-
         builder.Append("AWS4-HMAC-SHA256\n");
-        builder.Append(dateBuffer[..StringUtils.Format(ref dateBuffer, requestDate, Iso8601DateTime)]);
+        builder.Append(requestDate, Iso8601DateTime);
         builder.Append("\n");
-        builder.Append(dateBuffer[..StringUtils.Format(ref dateBuffer, requestDate, Iso8601Date)]);
+        builder.Append(requestDate, Iso8601Date);
         builder.Append(_scope);
     }
 

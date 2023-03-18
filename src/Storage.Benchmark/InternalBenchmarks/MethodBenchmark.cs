@@ -19,7 +19,23 @@ public class MethodBenchmark
     }
 
     [Benchmark]
-    public async Task<int> FileExistsFalse()
+    public async Task<long> DownloadFile()
+    {
+        _outputData.Seek(0, SeekOrigin.Begin);
+        var storageFile = await _storageClient.GetFile(_fileId, _cancellation);
+        if (!storageFile) ThrowException(storageFile.ToString());
+
+        await storageFile
+            .GetStream()
+            .CopyToAsync(_outputData, _cancellation);
+
+        await storageFile.DisposeAsync();
+
+        return _outputData.Length;
+    }
+
+    [Benchmark]
+    public async Task<int> ExistsFile()
     {
         var fileExistsResult = await _storageClient.FileExists(_fileId, _cancellation);
         return fileExistsResult
@@ -35,31 +51,6 @@ public class MethodBenchmark
         return fileUploadResult
             ? 1
             : ThrowException();
-    }
-
-    [Benchmark]
-    public async Task<int> UploadedFileExists()
-    {
-        var fileExistsResult = await _storageClient.FileExists(_fileId, _cancellation);
-        return fileExistsResult
-            ? 1
-            : ThrowException();
-    }
-
-    [Benchmark]
-    public async Task<long> UploadedFileDownload()
-    {
-        _outputData.Seek(0, SeekOrigin.Begin);
-        var storageFile = await _storageClient.GetFile(_fileId, _cancellation);
-        if (!storageFile) ThrowException(storageFile.ToString());
-
-        await storageFile
-            .GetStream()
-            .CopyToAsync(_outputData, _cancellation);
-
-        await storageFile.DisposeAsync();
-
-        return _outputData.Length;
     }
 
     #region Configuration
