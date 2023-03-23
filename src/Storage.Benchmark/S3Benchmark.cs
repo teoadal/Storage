@@ -9,7 +9,6 @@ using Storage.Benchmark.Utils;
 namespace Storage.Benchmark;
 
 [SimpleJob(RuntimeMoniker.Net70)]
-[MarkdownExporterAttribute.GitHub]
 [MeanColumn, MemoryDiagnoser]
 public class S3Benchmark
 {

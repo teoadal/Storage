@@ -6,7 +6,6 @@ using Storage.Utils;
 namespace Storage.Benchmark.InternalBenchmarks;
 
 [SimpleJob(RuntimeMoniker.Net70)]
-[MarkdownExporterAttribute.GitHub]
 [MeanColumn, MemoryDiagnoser]
 public class HashBenchmark
 {

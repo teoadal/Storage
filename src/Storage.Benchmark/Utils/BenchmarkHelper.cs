@@ -46,6 +46,20 @@ internal static class BenchmarkHelper
         client.CreateBucket(cancellation).GetAwaiter().GetResult();
     }
 
+    public static void EnsureFileExists(
+        StorageClient client, string fileName, Stream fileData,
+        CancellationToken cancellation)
+    {
+        fileData.Seek(0, SeekOrigin.Begin);
+
+        var result = client
+            .UploadFile(fileName, fileData, "application/pdf", cancellation)
+            .GetAwaiter()
+            .GetResult();
+
+        if (!result) throw new Exception("File isn't uploaded");
+    }
+
     public static byte[] ReadBigArray(IConfiguration config)
     {
         var filePath = config.GetValue<string>("BigFilePath");

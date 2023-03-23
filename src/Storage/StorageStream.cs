@@ -8,14 +8,20 @@ internal sealed class StorageStream : Stream
     public override long Length
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _response.Content.Headers.ContentLength ?? _stream.Length;
+        get
+        {
+            _length ??= _response.Content.Headers.ContentLength ?? _stream.Length;
+            return _length.Value;
+        }
     }
 
+    private long? _length;
     private readonly Stream _stream;
     private readonly HttpResponseMessage _response;
 
     public StorageStream(HttpResponseMessage response, Stream stream)
     {
+        _length = null;
         _response = response;
         _stream = stream;
     }
