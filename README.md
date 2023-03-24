@@ -81,7 +81,7 @@ if (bucketDeleteResult) Console.WriteLine("Bucket удалён");
 
 Напомню, что объект в смысле S3 это и есть файл.
 
-### Создание
+### Создание файла
 
 Создание, то есть загрузка файла в S3 хранилище, возможна двумя путями: можно разбить исходные данных на кусочки (
 multipart), а можно не разбивать. Самый простой способ загрузки файла - воспользоваться следующим методом (если файл
@@ -139,27 +139,27 @@ await MultipartComplete(fileName, uploadId, tags, cancellation);
 
 В коде клиента именно эту логику использует метод PutFileMultipart. Конкретную реализацию можно подсмотреть в нём.
 
-### Получение
+### Получение файла
 
 ```csharp
 StorageFile fileGetResult = await storageClient.GetFile(fileName, cancellationToken);
 if (fileGetResult) {
     Console.WriteLine($"Размер файла {fileGetResult.Length}, контент {fileGetResult.ContetType}");
-    return fileGetResult.GetStream();
+    return await fileGetResult.GetStream(cancellationToken);
 }
 else {
     Console.WriteLine($"Файл не может быть загружен, так как {fileGetResult}");
 }
 ```
 
-### Проверка существования
+### Проверка существования файла
 
 ```csharp
 bool fileExistsResult = await storageClient.FileExists(fileName, cancellationToken);
 if (fileExistsResult) Console.WriteLine("Файл существует");
 ```
 
-### Создание подписанной ссылки
+### Создание подписанной ссылки на файл
 
 Метод проверяет наличие файла в хранилище S3 и формирует GET запрос файла. Параметр `expiration` должен содержать время
 валидности ссылки начиная с даты формирования ссылки.
