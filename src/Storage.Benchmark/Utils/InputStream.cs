@@ -1,4 +1,4 @@
-﻿namespace Storage.Benchmark;
+﻿namespace Storage.Benchmark.Utils;
 
 internal sealed class InputStream : Stream
 {

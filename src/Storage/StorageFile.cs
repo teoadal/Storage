@@ -9,7 +9,7 @@ namespace Storage;
 /// Wrapper around <see cref="HttpResponseMessage"/> with a data of a file from storage
 /// </summary>
 [DebuggerDisplay("{ToString()}")]
-public readonly struct StorageFile : IAsyncDisposable, IDisposable
+public readonly struct StorageFile : IDisposable
 {
     /// <summary>
     /// Type of file content in MIME
@@ -50,12 +50,10 @@ public readonly struct StorageFile : IAsyncDisposable, IDisposable
     }
 
     private readonly HttpResponseMessage _response;
-    private readonly Stream _stream;
 
-    internal StorageFile(HttpResponseMessage response, Stream stream)
+    internal StorageFile(HttpResponseMessage response)
     {
         _response = response;
-        _stream = stream;
     }
 
     /// <summary>
@@ -63,9 +61,13 @@ public readonly struct StorageFile : IAsyncDisposable, IDisposable
     /// </summary>
     /// <returns>Stream of data</returns>
     /// <remarks>When stream will be closed the <see cref="HttpResponseMessage"/> will be disposed</remarks>
-    public Stream GetStream() => _response.IsSuccessStatusCode
-        ? new StorageStream(_response, _stream)
-        : _stream;
+    public async Task<Stream> GetStream(CancellationToken cancellation)
+    {
+        if (!_response.IsSuccessStatusCode) return Stream.Null;
+
+        var stream = await _response.Content.ReadAsStreamAsync(cancellation).ConfigureAwait(false);
+        return new StorageStream(_response, stream);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator bool(StorageFile file) => file._response.IsSuccessStatusCode;
@@ -85,12 +87,5 @@ public readonly struct StorageFile : IAsyncDisposable, IDisposable
     public void Dispose()
     {
         _response.Dispose();
-        _stream.Dispose();
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        _response.Dispose();
-        return _stream.DisposeAsync();
     }
 }

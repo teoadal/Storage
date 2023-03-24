@@ -9,7 +9,6 @@ using Storage.Benchmark.Utils;
 namespace Storage.Benchmark;
 
 [SimpleJob(RuntimeMoniker.Net70)]
-[MarkdownExporterAttribute.GitHub]
 [MeanColumn, MemoryDiagnoser]
 public class S3Benchmark
 {
@@ -133,11 +132,10 @@ public class S3Benchmark
         var storageFile = await _storageClient.GetFile(_fileId, _cancellation);
         if (!storageFile) ThrowException(storageFile.ToString());
 
-        await storageFile
-            .GetStream()
-            .CopyToAsync(_outputData, _cancellation);
+        var fileStream = await storageFile.GetStream(_cancellation);
+        await fileStream.CopyToAsync(_outputData, _cancellation);
 
-        await storageFile.DisposeAsync();
+        storageFile.Dispose();
 
         result++;
 
@@ -149,7 +147,7 @@ public class S3Benchmark
 
     private string _bucket = null!;
     private CancellationToken _cancellation;
-    private Stream _inputData = null!;
+    private InputStream _inputData = null!;
     private string _fileId = null!;
     private MemoryStream _outputData = null!;
 

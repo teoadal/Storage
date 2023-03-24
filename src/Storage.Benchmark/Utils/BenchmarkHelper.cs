@@ -8,6 +8,8 @@ namespace Storage.Benchmark.Utils;
 
 internal static class BenchmarkHelper
 {
+    private static readonly byte[] StreamBuffer = new byte[2048];
+
     // ReSharper disable once InconsistentNaming
     public static AmazonS3Client CreateAWSClient(StorageSettings settings)
     {
@@ -46,18 +48,53 @@ internal static class BenchmarkHelper
         client.CreateBucket(cancellation).GetAwaiter().GetResult();
     }
 
-    public static InputStream ReadBigFile(IConfiguration config)
+    public static void EnsureFileExists(
+        IConfiguration config, StorageClient client, string fileName,
+        CancellationToken cancellation)
+    {
+        var fileData = ReadBigFile(config);
+        fileData.Seek(0, SeekOrigin.Begin);
+
+        var result = client
+            .UploadFile(fileName, fileData, "application/pdf", cancellation)
+            .GetAwaiter()
+            .GetResult();
+
+        if (!result) throw new Exception("File isn't uploaded");
+    }
+
+    public static byte[] ReadBigArray(IConfiguration config)
     {
         var filePath = config.GetValue<string>("BigFilePath");
 
-        return new InputStream(!string.IsNullOrEmpty(filePath) && File.Exists(filePath)
+        return !string.IsNullOrEmpty(filePath) && File.Exists(filePath)
             ? File.ReadAllBytes(filePath)
-            : GetByteArray(123 * 1024 * 1024)); // 123 Mb
+            : GetByteArray(123 * 1024 * 1024); // 123 Mb
+    }
+
+    public static InputStream ReadBigFile(IConfiguration config)
+    {
+        return new InputStream(ReadBigArray(config));
     }
 
     public static IConfiguration ReadConfiguration() => new ConfigurationBuilder()
         .AddJsonFile("appsettings.json", false)
         .Build();
+
+    public static int ReadStreamMock(Stream input, byte[]? buffer = null)
+    {
+        buffer ??= StreamBuffer;
+
+        var result = 0;
+        while (input.Read(buffer) != 0)
+        {
+            result++;
+        }
+
+        input.Dispose();
+
+        return result;
+    }
 
     public static StorageSettings ReadSettings(IConfiguration config)
     {
@@ -85,15 +122,6 @@ internal static class BenchmarkHelper
         }
 
         return settings;
-    }
-
-    public static InputStream ReadSmallFile(IConfiguration config)
-    {
-        var filePath = config.GetValue<string>("BigFilePath");
-
-        return new InputStream(!string.IsNullOrEmpty(filePath) && File.Exists(filePath)
-            ? File.ReadAllBytes(filePath)
-            : GetByteArray(1 * 1024 * 1024)); // 1 Mb
     }
 
     private static byte[] GetByteArray(int size)

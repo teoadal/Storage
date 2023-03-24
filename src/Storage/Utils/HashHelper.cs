@@ -1,7 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -23,24 +22,6 @@ internal static class HashHelper
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string GetPayloadHash(string data) => Sha256ToHex(data);
 
-    [SuppressMessage("ReSharper", "InvertIf")]
-    private static string Sha256ToHex(ReadOnlySpan<char> value)
-    {
-        var count = Encoding.UTF8.GetByteCount(value);
-        using var memory = MemoryPool<byte>.Shared.Rent(count);
-        if (MemoryMarshal.TryGetArray(memory.Memory[..count], out ArraySegment<byte> segment))
-        {
-            Encoding.UTF8.GetBytes(value, segment);
-            Span<byte> hashBuffer = stackalloc byte[64];
-            if (SHA256.TryHashData(segment, hashBuffer, out var written))
-            {
-                return ToHex(hashBuffer[..written]);
-            }
-        }
-
-        return string.Empty;
-    }
-
     public static string ToHex(ReadOnlySpan<byte> data)
     {
         Span<char> buffer = stackalloc char[2];
@@ -52,5 +33,24 @@ internal static class HashHelper
         }
 
         return builder.Flush();
+    }
+
+    [SuppressMessage("ReSharper", "InvertIf")]
+    private static string Sha256ToHex(ReadOnlySpan<char> value)
+    {
+        var count = Encoding.UTF8.GetByteCount(value);
+
+        var pool = ArrayPool<byte>.Shared;
+        var byteBuffer = pool.Rent(count);
+
+        var encoded = Encoding.UTF8.GetBytes(value, byteBuffer);
+        Span<byte> hashBuffer = stackalloc byte[64];
+        var result = SHA256.TryHashData(byteBuffer.AsSpan(0, encoded), hashBuffer, out var written)
+            ? ToHex(hashBuffer[..written])
+            : string.Empty;
+
+        pool.Return(byteBuffer);
+
+        return result;
     }
 }

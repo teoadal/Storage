@@ -30,7 +30,7 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     }
 
     [Fact]
-    public async Task AboutMultipartUpload()
+    public async Task AbortMultipartUpload()
     {
         var fileName = _fixture.Create<string>();
 
@@ -133,9 +133,9 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     public async Task DisposeFileStream()
     {
         var fileName = await CreateTestFile();
-        await using var fileGetResult = await _client.GetFile(fileName, _cancellation);
+        using var fileGetResult = await _client.GetFile(fileName, _cancellation);
 
-        var fileStream = fileGetResult.GetStream();
+        var fileStream = await fileGetResult.GetStream(_cancellation);
         await fileStream.DisposeAsync();
 
         await DeleteTestFile(fileName);
@@ -145,7 +145,7 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     public async Task DisposeStorageFile()
     {
         var fileName = await CreateTestFile();
-        await using var fileGetResult = await _client.GetFile(fileName, _cancellation);
+        using var fileGetResult = await _client.GetFile(fileName, _cancellation);
 
         // ReSharper disable once MethodHasAsyncOverload
         fileGetResult.Dispose();
@@ -196,7 +196,7 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
         const string contentType = "video/mp4";
 
         var fileName = await CreateTestFile(contentType: contentType);
-        await using var fileGetResult = await _client.GetFile(fileName, _cancellation);
+        using var fileGetResult = await _client.GetFile(fileName, _cancellation);
 
         ((bool) fileGetResult).Should().BeTrue();
 
@@ -224,9 +224,9 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     {
         const int length = 1 * 1024 * 1024;
         var fileName = await CreateTestFile(size: length);
-        await using var fileGetResult = await _client.GetFile(fileName, _cancellation);
+        using var fileGetResult = await _client.GetFile(fileName, _cancellation);
 
-        var fileStream = fileGetResult.GetStream();
+        var fileStream = await fileGetResult.GetStream(_cancellation);
 
         fileStream.CanRead.Should().BeTrue();
         fileStream.CanSeek.Should().BeFalse();
@@ -470,10 +470,11 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 
     private async Task EnsureFileSame(string fileName, byte[] expectedBytes)
     {
-        await using var getFileResult = await _client.GetFile(fileName, _cancellation);
+        using var getFileResult = await _client.GetFile(fileName, _cancellation);
 
         using var memoryStream = StorageFixture.GetEmptyByteStream(getFileResult.Length);
-        await getFileResult.GetStream().CopyToAsync(memoryStream, _cancellation);
+        var stream = await getFileResult.GetStream(_cancellation);
+        await stream.CopyToAsync(memoryStream, _cancellation);
 
         memoryStream
             .ToArray().SequenceEqual(expectedBytes)
@@ -484,10 +485,11 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     {
         expectedBytes.Seek(0, SeekOrigin.Begin);
 
-        await using var getFileResult = await _client.GetFile(fileName, _cancellation);
+        using var getFileResult = await _client.GetFile(fileName, _cancellation);
 
         using var memoryStream = StorageFixture.GetEmptyByteStream(getFileResult.Length);
-        await getFileResult.GetStream().CopyToAsync(memoryStream, _cancellation);
+        var stream = await getFileResult.GetStream(_cancellation);
+        await stream.CopyToAsync(memoryStream, _cancellation);
 
         memoryStream
             .ToArray().SequenceEqual(expectedBytes.ToArray())

@@ -7,9 +7,9 @@ namespace Storage.Utils;
 
 internal ref struct ValueStringBuilder
 {
-    private char[]? _array;
     private Span<char> _buffer;
     private int _length;
+    private char[]? _array;
 
     public ValueStringBuilder(Span<char> buffer)
     {
@@ -43,6 +43,21 @@ internal ref struct ValueStringBuilder
         {
             if (pos > _buffer.Length - written) Grow(written);
             buffer.CopyTo(_buffer[pos..]);
+
+            _length = pos + written;
+        }
+        else Errors.CantFormatToString(value);
+    }
+
+    public void Append(DateTime value, string format)
+    {
+        Span<char> buffer = stackalloc char[16];
+        var pos = _length;
+        if (value.TryFormat(buffer, out var written, format))
+        {
+            if (pos > _buffer.Length - written) Grow(written);
+            buffer.CopyTo(_buffer[pos..]);
+
             _length = pos + written;
         }
         else Errors.CantFormatToString(value);
@@ -56,6 +71,7 @@ internal ref struct ValueStringBuilder
         {
             if (pos > _buffer.Length - written) Grow(written);
             buffer.CopyTo(_buffer[pos..]);
+
             _length = pos + written;
         }
         else Errors.CantFormatToString(value);
@@ -103,14 +119,13 @@ internal ref struct ValueStringBuilder
     public readonly ReadOnlySpan<char> AsReadonlySpan() => _buffer[.._length];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Dispose()
+    public readonly void Dispose()
     {
         var toReturn = _array;
-        this = default;
         if (toReturn != null) ArrayPool<char>.Shared.Return(toReturn);
     }
 
-    public string Flush()
+    public readonly string Flush()
     {
         var result = _length == 0
             ? string.Empty
