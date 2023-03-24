@@ -7,9 +7,9 @@ namespace Storage.Utils;
 
 internal ref struct ValueStringBuilder
 {
-    private char[]? _array;
     private Span<char> _buffer;
     private int _length;
+    private char[]? _array;
 
     public ValueStringBuilder(Span<char> buffer)
     {
@@ -119,14 +119,13 @@ internal ref struct ValueStringBuilder
     public readonly ReadOnlySpan<char> AsReadonlySpan() => _buffer[.._length];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Dispose()
+    public readonly void Dispose()
     {
         var toReturn = _array;
-        this = default;
         if (toReturn != null) ArrayPool<char>.Shared.Return(toReturn);
     }
 
-    public string Flush()
+    public readonly string Flush()
     {
         var result = _length == 0
             ? string.Empty

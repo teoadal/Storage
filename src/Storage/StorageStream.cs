@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 
 namespace Storage;
 
@@ -7,7 +6,6 @@ internal sealed class StorageStream : Stream
 {
     public override long Length
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
             _length ??= _response.Content.Headers.ContentLength ?? _stream.Length;
@@ -21,7 +19,6 @@ internal sealed class StorageStream : Stream
 
     public StorageStream(HttpResponseMessage response, Stream stream)
     {
-        _length = null;
         _response = response;
         _stream = stream;
     }
@@ -34,23 +31,11 @@ internal sealed class StorageStream : Stream
 
     #region Contract
 
-    public override bool CanRead
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _stream.CanRead;
-    }
+    public override bool CanRead => _stream.CanRead;
 
-    public override bool CanSeek
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _stream.CanSeek;
-    }
+    public override bool CanSeek => _stream.CanSeek;
 
-    public override bool CanWrite
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _stream.CanWrite;
-    }
+    public override bool CanWrite => _stream.CanWrite;
 
     [ExcludeFromCodeCoverage]
     public override void Flush() => _stream.Flush();

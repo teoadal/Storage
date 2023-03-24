@@ -8,6 +8,8 @@ namespace Storage.Benchmark.Utils;
 
 internal static class BenchmarkHelper
 {
+    private static readonly byte[] StreamBuffer = new byte[2048];
+
     // ReSharper disable once InconsistentNaming
     public static AmazonS3Client CreateAWSClient(StorageSettings settings)
     {
@@ -47,9 +49,10 @@ internal static class BenchmarkHelper
     }
 
     public static void EnsureFileExists(
-        StorageClient client, string fileName, Stream fileData,
+        IConfiguration config, StorageClient client, string fileName,
         CancellationToken cancellation)
     {
+        var fileData = ReadBigFile(config);
         fileData.Seek(0, SeekOrigin.Begin);
 
         var result = client
@@ -71,12 +74,27 @@ internal static class BenchmarkHelper
 
     public static InputStream ReadBigFile(IConfiguration config)
     {
-        return new InputStream(ReadBigArray(config)); // 123 Mb
+        return new InputStream(ReadBigArray(config));
     }
 
     public static IConfiguration ReadConfiguration() => new ConfigurationBuilder()
         .AddJsonFile("appsettings.json", false)
         .Build();
+
+    public static int ReadStreamMock(Stream input, byte[]? buffer = null)
+    {
+        buffer ??= StreamBuffer;
+
+        var result = 0;
+        while (input.Read(buffer) != 0)
+        {
+            result++;
+        }
+
+        input.Dispose();
+
+        return result;
+    }
 
     public static StorageSettings ReadSettings(IConfiguration config)
     {
@@ -104,15 +122,6 @@ internal static class BenchmarkHelper
         }
 
         return settings;
-    }
-
-    public static InputStream ReadSmallFile(IConfiguration config)
-    {
-        var filePath = config.GetValue<string>("BigFilePath");
-
-        return new InputStream(!string.IsNullOrEmpty(filePath) && File.Exists(filePath)
-            ? File.ReadAllBytes(filePath)
-            : GetByteArray(1 * 1024 * 1024)); // 1 Mb
     }
 
     private static byte[] GetByteArray(int size)
