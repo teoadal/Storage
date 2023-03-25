@@ -5,8 +5,6 @@ namespace Storage.Benchmark.InternalBenchmarks;
 
 [MeanColumn, MemoryDiagnoser]
 [InProcess]
-// [IterationCount(2)]
-// [WarmupCount(10)]
 public class DownloadBenchmark
 {
     [Benchmark]
