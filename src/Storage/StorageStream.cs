@@ -37,6 +37,21 @@ internal sealed class StorageStream : Stream
 
     public override bool CanWrite => _stream.CanWrite;
 
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        return _stream.ReadAsync(buffer, offset, count, cancellationToken);
+    }
+
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = new CancellationToken())
+    {
+        return _stream.ReadAsync(buffer, cancellationToken);
+    }
+
+    public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
+    {
+        return _stream.CopyToAsync(destination, bufferSize, cancellationToken);
+    }
+
     [ExcludeFromCodeCoverage]
     public override void Flush() => _stream.Flush();
 

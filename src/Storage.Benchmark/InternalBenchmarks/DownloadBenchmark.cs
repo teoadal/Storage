@@ -1,18 +1,23 @@
 ﻿using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Jobs;
 using Storage.Benchmark.Utils;
 
 namespace Storage.Benchmark.InternalBenchmarks;
 
-[SimpleJob(RuntimeMoniker.Net70)]
 [MeanColumn, MemoryDiagnoser]
+[InProcess]
+// [IterationCount(2)]
+// [WarmupCount(10)]
 public class DownloadBenchmark
 {
     [Benchmark]
     public async Task<int> JustDownload()
     {
         using var file = await _storageClient.GetFile(_fileId, _cancellation);
-        return BenchmarkHelper.ReadStreamMock(await file.GetStream(_cancellation));
+
+        return await BenchmarkHelper.ReadStreamMock(
+            await file.GetStream(_cancellation),
+            BenchmarkHelper.StreamBuffer,
+            _cancellation);
     }
 
     #region Configuration
@@ -28,11 +33,11 @@ public class DownloadBenchmark
         var settings = BenchmarkHelper.ReadSettings(config);
 
         _cancellation = new CancellationToken();
-        _fileId = $"привет-как-дела{Guid.NewGuid()}";
+        _fileId = $"привет-как-делаdcd156a8-b6bd-4130-a2c7-8a38dbfebbc7";
         _storageClient = BenchmarkHelper.CreateStoragesClient(settings);
 
-        BenchmarkHelper.EnsureBucketExists(_storageClient, _cancellation);
-        BenchmarkHelper.EnsureFileExists(config, _storageClient, _fileId, _cancellation);
+        // BenchmarkHelper.EnsureBucketExists(_storageClient, _cancellation);
+        // BenchmarkHelper.EnsureFileExists(config, _storageClient, _fileId, _cancellation);
     }
 
     [GlobalCleanup]

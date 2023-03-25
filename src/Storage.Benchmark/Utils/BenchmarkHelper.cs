@@ -8,7 +8,7 @@ namespace Storage.Benchmark.Utils;
 
 internal static class BenchmarkHelper
 {
-    private static readonly byte[] StreamBuffer = new byte[2048];
+    public static readonly byte[] StreamBuffer = new byte[2048];
 
     // ReSharper disable once InconsistentNaming
     public static AmazonS3Client CreateAWSClient(StorageSettings settings)
@@ -81,17 +81,15 @@ internal static class BenchmarkHelper
         .AddJsonFile("appsettings.json", false)
         .Build();
 
-    public static int ReadStreamMock(Stream input, byte[]? buffer = null)
+    public static async Task<int> ReadStreamMock(Stream input, byte[] buffer, CancellationToken cancellation)
     {
-        buffer ??= StreamBuffer;
-
         var result = 0;
-        while (input.Read(buffer) != 0)
+        while (await input.ReadAsync(buffer, cancellation) != 0)
         {
             result++;
         }
 
-        input.Dispose();
+        await input.DisposeAsync();
 
         return result;
     }
