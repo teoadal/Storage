@@ -9,8 +9,8 @@ public sealed class StorageFixture : IDisposable
     public Fixture Mocks => _fixture ??= new Fixture();
 
     public readonly HttpClient HttpClient;
-    public readonly StorageClient StorageClient;
-    public readonly StorageSettings Settings;
+    public readonly S3Client S3Client;
+    public readonly S3Settings Settings;
 
     private const int DefaultByteArraySize = 1 * 1024 * 1024; //7Mb
     private Fixture? _fixture;
@@ -27,7 +27,7 @@ public sealed class StorageFixture : IDisposable
         var environmentHttps = Environment.GetEnvironmentVariable("STORAGE_HTTPS");
         var https = !string.IsNullOrEmpty(environmentHttps) && bool.Parse(environmentHttps);
 
-        Settings = new StorageSettings
+        Settings = new S3Settings
         {
             AccessKey = Environment.GetEnvironmentVariable("STORAGE_KEY") ?? "ROOTUSER",
             Bucket = Environment.GetEnvironmentVariable("STORAGE_BUCKET") ?? "reconfig",
@@ -38,7 +38,7 @@ public sealed class StorageFixture : IDisposable
         };
 
         HttpClient = new HttpClient();
-        StorageClient = new StorageClient(Settings);
+        S3Client = new S3Client(Settings);
     }
 
     public T Create<T>() => Mocks.Create<T>();
@@ -65,6 +65,6 @@ public sealed class StorageFixture : IDisposable
     public void Dispose()
     {
         HttpClient.Dispose();
-        StorageClient.Dispose();
+        S3Client.Dispose();
     }
 }

@@ -32,7 +32,7 @@ Job = .NET 7.0  Runtime=.NET 7.0
 Для работы с хранилищем необходимо создать клиент.
 
 ```csharp
-var storageClient = new StorageClient(new StorageSettings
+var storageClient = new S3Client(new S3Settings
 {
     AccessKey = "ROOTUSER",
     Bucket = "mybucket",
@@ -66,7 +66,7 @@ Console.WriteLine(bucketCreateResult
 Как и в прошлый раз, мы знаем название bucket'a, так как мы передаём его в настройках клиента.
 
 ```csharp
-bool bucketCheckResult = await storageClient.BucketExists(cancellationToken);
+bool bucketCheckResult = await storageClient.IsBucketExists(cancellationToken);
 if (bucketCheckResult) Console.WriteLine("Bucket существует");
 ```
 
@@ -88,53 +88,27 @@ multipart), а можно не разбивать. Самый простой с�
 будет больше 5 МБ, то применяется multipart):
 
 ```csharp
-bool fileUploadResult = await storageClient.UploadFile(fileName, fileStream, fileContentType, cancellationToken);
+bool fileUploadResult = await storageClient.UploadFile(fileName, fileContentType, fileStream, cancellationToken);
 if (fileUploadResult) Console.WriteLine("Файл загружен");
 ```
 
-#### Создание без Multipart
-
-Можно принудительно загружать файл без multipart. Есть сигнатура и для ``byte[]``.
-
-```csharp
-bool fileUploadResult = await storageClient.PutFile(fileName, byteArray, fileContentType, cancellationToken);
-if (fileUploadResult) Console.WriteLine("Файл загружен");
-```
-
-#### Создание с использованием Multipart
-
-Можно принудительно загружать файл с использованием multipart. В этом случае нужно будет явно указать размер одного
-кусочка (не менее 5 МБ).
-
-```csharp
-bool fileUploadResult = await storageClient.PutFileMultipart(fileName, fileStream, fileContentType, partSize, cancellationToken);
-if (fileUploadResult) Console.WriteLine("Файл загружен");
-```
 
 #### Управление Multipart-загрузкой
 
-Для самостоятельного управления multipart-загрузкой, можно использовать методы клиента, начинающиеся со
-слова `Multipart`.
+Для самостоятельного управления multipart-загрузкой, можно воспользоваться методом `UploadFile` без указания данных. Получится примеоно такой код:
 
 ```csharp
-Stream fileStream = ...
-// получаем идентификатор загрузки
-string uploadId = await storageClient.Multipart(fileName, fileType, cancellationToken);
-while(fileStream.Position < fileStream.Position) {
-    // создаём свою логику разделения на данных на куски (parts)...
-    
-    string eTag = await MultipartUpload(fileName, uploadId, partNumber, partData, partSize, cancellation);
-    
-    // запоминаем 'eTag' и номер куска... 
-    
-    if (string.IsNullOrEmpty(eTag)) { // отменяем всю загрузку, если кусок загрузить не удалось
-        await MultipartAbort(fileName, uploadId, cancellation); 
-        return false;
-    }
+
+using S3Upload upload = await storageClient.UploadFile(fileName, fileType, cancellationToken);
+
+await upload.Upload(stream, cancellationToken); // загружаем часть документа
+if (!await upload.Upload(byteArray, cancellationToken)) { // загружаем другую часть документа
+    await upload.Abort(cancellationToken); // отменяем загрузку
+}
+else {
+    await upload.Complete(cancellationToken); // завершаем загрузку    
 }
 
-// сообщаем хранилищу, что загрузка завершена
-await MultipartComplete(fileName, uploadId, tags, cancellation);
 ```
 
 В коде клиента именно эту логику использует метод PutFileMultipart. Конкретную реализацию можно подсмотреть в нём.
@@ -155,7 +129,7 @@ else {
 ### Проверка существования файла
 
 ```csharp
-bool fileExistsResult = await storageClient.FileExists(fileName, cancellationToken);
+bool fileExistsResult = await storageClient.IsFileExists(fileName, cancellationToken);
 if (fileExistsResult) Console.WriteLine("Файл существует");
 ```
 

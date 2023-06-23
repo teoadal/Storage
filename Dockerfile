@@ -10,4 +10,4 @@ ENTRYPOINT ["dotnet", "./src/publish/Storage.Benchmark.dll"]
 #unzip dotMemoryclt.zip -d ./dotMemoryclt && \
 #chmod +x -R ./dotMemoryclt/*
 #
-#ENTRYPOINT ./dotMemoryclt/tools/dotmemory start-net-core --temp-dir=./src/dotMemoryclt/tmp --timeout=16m --save-to-dir=./src/dotMemoryclt/workspaces --log-file=./src/dotMemoryclt/tmp/log.txt --trigger-timer=2m ./src/publish/Storage.Benchmark.dll
+#ENTRYPOINT ./dotMemoryclt/tools/dotmemory start-net-core --temp-dir=./src/dotMemoryclt/tmp --timeout=16m --save-to-dir=./src/dotMemoryclt/workspaces --log-file=./src/dotMemoryclt/tmp/log.txt --trigger-timer=1m ./src/publish/Storage.Benchmark.dll

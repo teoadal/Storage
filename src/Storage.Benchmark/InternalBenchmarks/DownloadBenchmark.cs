@@ -1,25 +1,28 @@
 ﻿using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Jobs;
 using Storage.Benchmark.Utils;
 
 namespace Storage.Benchmark.InternalBenchmarks;
 
-[SimpleJob(RuntimeMoniker.Net70)]
 [MeanColumn, MemoryDiagnoser]
+[InProcess]
 public class DownloadBenchmark
 {
     [Benchmark]
     public async Task<int> JustDownload()
     {
-        using var file = await _storageClient.GetFile(_fileId, _cancellation);
-        return BenchmarkHelper.ReadStreamMock(await file.GetStream(_cancellation));
+        using var file = await _s3Client.GetFile(_fileId, _cancellation);
+
+        return await BenchmarkHelper.ReadStreamMock(
+            await file.GetStream(_cancellation),
+            BenchmarkHelper.StreamBuffer,
+            _cancellation);
     }
 
     #region Configuration
 
     private CancellationToken _cancellation;
     private string _fileId = null!;
-    private StorageClient _storageClient = null!;
+    private S3Client _s3Client = null!;
 
     [GlobalSetup]
     public void Config()
@@ -28,17 +31,17 @@ public class DownloadBenchmark
         var settings = BenchmarkHelper.ReadSettings(config);
 
         _cancellation = new CancellationToken();
-        _fileId = $"привет-как-дела{Guid.NewGuid()}";
-        _storageClient = BenchmarkHelper.CreateStoragesClient(settings);
+        _fileId = $"привет-как-делаdcd156a8-b6bd-4130-a2c7-8a38dbfebbc7";
+        _s3Client = BenchmarkHelper.CreateStoragesClient(settings);
 
-        BenchmarkHelper.EnsureBucketExists(_storageClient, _cancellation);
-        BenchmarkHelper.EnsureFileExists(config, _storageClient, _fileId, _cancellation);
+        // BenchmarkHelper.EnsureBucketExists(_storageClient, _cancellation);
+        // BenchmarkHelper.EnsureFileExists(config, _storageClient, _fileId, _cancellation);
     }
 
     [GlobalCleanup]
     public void Clear()
     {
-        _storageClient.Dispose();
+        _s3Client.Dispose();
     }
 
     #endregion

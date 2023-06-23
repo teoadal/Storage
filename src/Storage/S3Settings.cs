@@ -1,6 +1,6 @@
 ﻿namespace Storage;
 
-public sealed class StorageSettings
+public sealed class S3Settings
 {
     public required string AccessKey { get; init; }
 
