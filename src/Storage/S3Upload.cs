@@ -9,12 +9,19 @@ public sealed class S3Upload : IDisposable
     public readonly string FileName;
     public readonly string UploadId;
 
+    public long Written
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _written;
+    }
+    
     private byte[]? _byteBuffer;
     private readonly S3Client _client;
     private readonly string _encodedFileName;
     private bool _disposed;
     private string[] _parts;
     private int _partCount;
+    private long _written;
 
     internal S3Upload(S3Client client, string fileName, string encodedFileName, string uploadId)
     {
@@ -85,6 +92,8 @@ public sealed class S3Upload : IDisposable
         if (_parts.Length == _partCount) CollectionUtils.Resize(ref _parts, ArrayPool<string>.Shared, _partCount * 2);
         _parts[_partCount++] = partId;
 
+        _written += length;
+        
         return true;
     }
 }

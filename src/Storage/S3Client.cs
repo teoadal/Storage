@@ -256,7 +256,7 @@ public sealed class S3Client
     {
         var length = data.TryGetLength();
 
-        return length is null or > DefaultPartSize
+        return length is null or 0 or > DefaultPartSize
             ? PutFileMultipart(fileName, contentType, data, cancellation)
             : PutFile(fileName, contentType, data, cancellation);
     }
