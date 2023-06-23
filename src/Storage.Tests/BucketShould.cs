@@ -43,7 +43,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
     [Fact]
     public async Task BeExists()
     {
-        var bucketExistsResult = await _client.BucketExists(_cancellation);
+        var bucketExistsResult = await _client.IsBucketExists(_cancellation);
 
         bucketExistsResult
             .Should().BeTrue();
@@ -65,7 +65,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
             UseHttps = settings.UseHttps
         }, _fixture.HttpClient);
 
-        var bucketExistsResult = await client.BucketExists(_cancellation);
+        var bucketExistsResult = await client.IsBucketExists(_cancellation);
 
         bucketExistsResult
             .Should().BeFalse();

@@ -110,11 +110,11 @@ public class S3Benchmark
     {
         var result = 0;
 
-        var bucketExistsResult = await _storageClient.BucketExists(_cancellation);
+        var bucketExistsResult = await _storageClient.IsBucketExists(_cancellation);
         if (!bucketExistsResult) ThrowException();
         result++;
 
-        var fileExistsResult = await _storageClient.FileExists(_fileId, _cancellation);
+        var fileExistsResult = await _storageClient.IsFileExists(_fileId, _cancellation);
         if (fileExistsResult) ThrowException();
         result++;
 
@@ -124,7 +124,7 @@ public class S3Benchmark
 
         result++;
 
-        fileExistsResult = await _storageClient.FileExists(_fileId, _cancellation);
+        fileExistsResult = await _storageClient.IsFileExists(_fileId, _cancellation);
         if (!fileExistsResult) ThrowException();
         result++;
 

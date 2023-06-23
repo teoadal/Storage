@@ -11,6 +11,12 @@ internal static class Errors
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void Disposed()
+    {
+        throw new ObjectDisposedException(nameof(StorageClient));
+    }
+    
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static void UnexpectedResult(HttpResponseMessage response)
     {
         var reason = response.ReasonPhrase ?? response.ToString();

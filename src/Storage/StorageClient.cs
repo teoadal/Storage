@@ -10,9 +10,9 @@ using static Storage.Utils.HashHelper;
 
 namespace Storage;
 
-[DebuggerDisplay("Client for '{_bucket}'")]
+[DebuggerDisplay("Client for '{Bucket}'")]
 [SuppressMessage("ReSharper", "SwitchStatementHandlesSomeKnownEnumValuesWithDefault")]
-public sealed class StorageClient : IStorageClient
+public sealed class StorageClient
 {
     private const int DefaultPartSize = 5 * 1024 * 1024; // 5 Mb
 
@@ -26,6 +26,7 @@ public sealed class StorageClient : IStorageClient
     public readonly string Bucket;
 
     private readonly string _bucket;
+    private bool _disposed;
     private readonly string _endpoint;
 
     private readonly HttpHelper _http;
@@ -80,28 +81,6 @@ public sealed class StorageClient : IStorageClient
         }
     }
 
-    public async Task<bool> BucketExists(CancellationToken cancellation)
-    {
-        HttpResponseMessage response;
-        using (var request = CreateRequest(HttpMethod.Head))
-        {
-            response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
-        }
-
-        switch (response.StatusCode)
-        {
-            case HttpStatusCode.OK:
-                response.Dispose();
-                return true;
-            case HttpStatusCode.NotFound:
-                response.Dispose();
-                return false;
-            default:
-                Errors.UnexpectedResult(response);
-                return false;
-        }
-    }
-
     public async Task<bool> DeleteBucket(CancellationToken cancellation)
     {
         HttpResponseMessage response;
@@ -136,26 +115,13 @@ public sealed class StorageClient : IStorageClient
         response.Dispose();
     }
 
-    public async Task<bool> FileExists(string fileName, CancellationToken cancellation)
+    public void Dispose()
     {
-        HttpResponseMessage response;
-        using (var request = CreateRequest(HttpMethod.Head, fileName))
-        {
-            response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
-        }
+        if (_disposed) return;
 
-        switch (response.StatusCode)
-        {
-            case HttpStatusCode.OK:
-                response.Dispose();
-                return true;
-            case HttpStatusCode.NotFound:
-                response.Dispose();
-                return false;
-            default:
-                Errors.UnexpectedResult(response);
-                return false;
-        }
+        _client.Dispose();
+
+        _disposed = true;
     }
 
     public async Task<StorageFile> GetFile(string fileName, CancellationToken cancellation)
@@ -202,9 +168,53 @@ public sealed class StorageClient : IStorageClient
 
     public async Task<string?> GetFileUrl(string fileName, TimeSpan expiration, CancellationToken cancellation)
     {
-        return await FileExists(fileName, cancellation).ConfigureAwait(false)
+        return await IsFileExists(fileName, cancellation).ConfigureAwait(false)
             ? BuildFileUrl(fileName, expiration)
             : null;
+    }
+
+    public async Task<bool> IsBucketExists(CancellationToken cancellation)
+    {
+        HttpResponseMessage response;
+        using (var request = CreateRequest(HttpMethod.Head))
+        {
+            response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
+        }
+
+        switch (response.StatusCode)
+        {
+            case HttpStatusCode.OK:
+                response.Dispose();
+                return true;
+            case HttpStatusCode.NotFound:
+                response.Dispose();
+                return false;
+            default:
+                Errors.UnexpectedResult(response);
+                return false;
+        }
+    }
+
+    public async Task<bool> IsFileExists(string fileName, CancellationToken cancellation)
+    {
+        HttpResponseMessage response;
+        using (var request = CreateRequest(HttpMethod.Head, fileName))
+        {
+            response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
+        }
+
+        switch (response.StatusCode)
+        {
+            case HttpStatusCode.OK:
+                response.Dispose();
+                return true;
+            case HttpStatusCode.NotFound:
+                response.Dispose();
+                return false;
+            default:
+                Errors.UnexpectedResult(response);
+                return false;
+        }
     }
 
     public async IAsyncEnumerable<string> List(string? prefix, [EnumeratorCancellation] CancellationToken cancellation)
@@ -360,12 +370,70 @@ public sealed class StorageClient : IStorageClient
         return result;
     }
 
-    public async Task<bool> PutFile(string fileName, Stream data, string contentType, CancellationToken cancellation)
+    public Task<bool> UploadFile(string fileName, Stream data, string contentType, CancellationToken cancellation)
+    {
+        var length = StreamUtils.TryGetLength(data);
+
+        return length is null or > DefaultPartSize
+            ? PutFileMultipart(fileName, data, contentType, DefaultPartSize, length, cancellation)
+            : PutFile(fileName, data, contentType, cancellation);
+    }
+
+    public Task<bool> UploadFile(
+        string fileName, byte[] data, string contentType,
+        CancellationToken cancellation) => UploadFile(fileName, data, 0, data.Length, contentType, cancellation);
+
+    public async Task<bool> UploadFile(
+        string fileName, byte[] data, int offset, int count, string contentType,
+        CancellationToken cancellation)
+    {
+        var payloadHash = GetPayloadHash(data);
+
+        HttpResponseMessage response;
+        using (var request = CreateRequest(HttpMethod.Put, fileName))
+        {
+            using (var content = new ByteArrayContent(data, offset, count))
+            {
+                content.Headers.Add("content-type", contentType);
+                request.Content = content;
+
+                response = await Send(request, payloadHash, cancellation).ConfigureAwait(false);
+            }
+        }
+
+        if (response.StatusCode == HttpStatusCode.OK)
+        {
+            response.Dispose();
+            return true;
+        }
+
+        Errors.UnexpectedResult(response);
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private HttpRequestMessage CreateRequest(HttpMethod method, string? fileName = null)
+    {
+        var url = new ValueStringBuilder(stackalloc char[512]);
+        url.Append(_bucket);
+
+        // ReSharper disable once InvertIf
+        if (!string.IsNullOrEmpty(fileName))
+        {
+            url.Append('/');
+            HttpHelper.AppendEncodedName(ref url, fileName);
+        }
+
+        return new HttpRequestMessage(method, new Uri(url.Flush(), UriKind.Absolute));
+    }
+
+    private async Task<bool> PutFile(string fileName, Stream data, string contentType, CancellationToken cancellation)
     {
         var bufferPool = ArrayPool<byte>.Shared;
 
         var buffer = bufferPool.Rent((int) data.Length);
         var dataSize = await data.ReadAsync(buffer, cancellation).ConfigureAwait(false);
+
         var payloadHash = GetPayloadHash(buffer.AsSpan(0, dataSize));
 
         HttpResponseMessage response;
@@ -397,44 +465,8 @@ public sealed class StorageClient : IStorageClient
         return false;
     }
 
-    public Task<bool> PutFile(
-        string fileName, byte[] data, string contentType,
-        CancellationToken cancellation) => PutFile(fileName, data, 0, data.Length, contentType, cancellation);
-
-    public async Task<bool> PutFile(
-        string fileName, byte[] data, int offset, int count, string contentType,
-        CancellationToken cancellation)
-    {
-        var payloadHash = GetPayloadHash(data);
-
-        HttpResponseMessage response;
-        using (var request = CreateRequest(HttpMethod.Put, fileName))
-        {
-            using (var content = new ByteArrayContent(data, offset, count))
-            {
-                content.Headers.Add("content-type", contentType);
-                request.Content = content;
-
-                response = await Send(request, payloadHash, cancellation).ConfigureAwait(false);
-            }
-        }
-
-        if (response.StatusCode == HttpStatusCode.OK)
-        {
-            response.Dispose();
-            return true;
-        }
-
-        Errors.UnexpectedResult(response);
-        return false;
-    }
-
-    public Task<bool> PutFileMultipart(
-        string fileName, Stream data, string contentType,
-        CancellationToken cancellation) => PutFileMultipart(fileName, data, contentType, DefaultPartSize, cancellation);
-
-    public async Task<bool> PutFileMultipart(
-        string fileName, Stream data, string contentType, int partSize,
+    private async Task<bool> PutFileMultipart(
+        string fileName, Stream data, string contentType, int partSize, long? length,
         CancellationToken cancellation)
     {
         var dataLength = data.Length;
@@ -492,33 +524,12 @@ public sealed class StorageClient : IStorageClient
         return completeResult;
     }
 
-    public Task<bool> UploadFile(string fileName, Stream data, string contentType, CancellationToken cancellation)
-    {
-        return data.Length is > 0 and > DefaultPartSize
-            ? PutFileMultipart(fileName, data, contentType, DefaultPartSize, cancellation)
-            : PutFile(fileName, data, contentType, cancellation);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private HttpRequestMessage CreateRequest(HttpMethod method, string? fileName = null)
-    {
-        var url = new ValueStringBuilder(stackalloc char[512]);
-        url.Append(_bucket);
-
-        // ReSharper disable once InvertIf
-        if (!string.IsNullOrEmpty(fileName))
-        {
-            url.Append('/');
-            HttpHelper.AppendEncodedName(ref url, fileName);
-        }
-
-        return new HttpRequestMessage(method, new Uri(url.Flush(), UriKind.Absolute));
-    }
-
     private Task<HttpResponseMessage> Send(
         HttpRequestMessage request, string payloadHash,
         CancellationToken cancellation)
     {
+        if (_disposed) Errors.Disposed(); 
+        
         var now = DateTime.UtcNow;
 
         var headers = request.Headers;
@@ -532,10 +543,5 @@ public sealed class StorageClient : IStorageClient
         headers.TryAddWithoutValidation("Authorization", _http.BuildHeader(now, signature));
 
         return _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
-    }
-
-    public void Dispose()
-    {
-        _client.Dispose();
     }
 }

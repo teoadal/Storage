@@ -43,7 +43,7 @@ internal static class BenchmarkHelper
 
     public static void EnsureBucketExists(StorageClient client, CancellationToken cancellation)
     {
-        if (client.BucketExists(cancellation).GetAwaiter().GetResult()) return;
+        if (client.IsBucketExists(cancellation).GetAwaiter().GetResult()) return;
 
         client.CreateBucket(cancellation).GetAwaiter().GetResult();
     }
