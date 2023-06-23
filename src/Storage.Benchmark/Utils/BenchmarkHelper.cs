@@ -56,7 +56,7 @@ internal static class BenchmarkHelper
         fileData.Seek(0, SeekOrigin.Begin);
 
         var result = client
-            .UploadFile(fileName, fileData, "application/pdf", cancellation)
+            .UploadFile(fileName, "application/pdf", fileData, cancellation)
             .GetAwaiter()
             .GetResult();
 

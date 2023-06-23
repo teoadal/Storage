@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using FluentAssertions;
 using Storage.Tests.Mocks;
+using static Storage.Tests.Mocks.StorageFixture;
 
 namespace Storage.Tests;
 
@@ -30,28 +31,6 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     }
 
     [Fact]
-    public async Task AbortMultipartUpload()
-    {
-        var fileName = _fixture.Create<string>();
-
-        var uploadId = await _client.MultipartStart(fileName, StorageFixture.StreamContentType, _ct);
-
-
-        var part = StorageFixture.GetByteArray();
-        await _client
-            .Invoking(client => client.MultipartUpload(fileName, uploadId, 1, part, part.Length, _ct))
-            .Should().NotThrowAsync();
-
-        var abortResult = await _client
-            .Invoking(client => client.MultipartAbort(fileName, uploadId, _ct))
-            .Should().NotThrowAsync();
-
-        abortResult
-            .Which
-            .Should().BeTrue();
-    }
-
-    [Fact]
     public async Task AllowParallelUploadMultipleFiles()
     {
         const int parallelization = 10;
@@ -60,11 +39,11 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
         var tasks = new Task<bool>[parallelization];
         for (var i = 0; i < parallelization; i++)
         {
-            var fileData = StorageFixture.GetByteStream(12 * 1024 * 1024);
+            var fileData = GetByteStream(12 * 1024 * 1024);
             var fileName = $"{file}-{i}";
             tasks[i] = Task.Run(async () =>
             {
-                await _client.UploadFile(fileName, fileData, StorageFixture.StreamContentType, _ct);
+                await _client.UploadFile(fileName, StreamContentType, fileData, _ct);
                 if (!await _client.IsFileExists(fileName, _ct)) return false;
                 await _client.DeleteFile(fileName, _ct);
                 return true;
@@ -277,8 +256,8 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     public async Task PutByteArray()
     {
         var fileName = _fixture.Create<string>();
-        var data = StorageFixture.GetByteArray(15000);
-        var filePutResult = await _client.UploadFile(fileName, data, StorageFixture.StreamContentType, _ct);
+        var data = GetByteArray(15000);
+        var filePutResult = await _client.UploadFile(fileName, StreamContentType, data, _ct);
 
         filePutResult
             .Should().BeTrue();
@@ -291,8 +270,8 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     public async Task PutStream()
     {
         var fileName = _fixture.Create<string>();
-        var data = StorageFixture.GetByteStream(15000);
-        var filePutResult = await _client.UploadFile(fileName, data, StorageFixture.StreamContentType, _ct);
+        var data = GetByteStream(15000);
+        var filePutResult = await _client.UploadFile(fileName, StreamContentType, data, _ct);
 
         filePutResult
             .Should().BeTrue();
@@ -305,8 +284,8 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     public async Task Upload()
     {
         var fileName = _fixture.Create<string>();
-        using var data = StorageFixture.GetByteStream(12 * 1024 * 1024); // 12 Mb
-        var filePutResult = await _client.UploadFile(fileName, data, StorageFixture.StreamContentType, _ct);
+        using var data = GetByteStream(12 * 1024 * 1024); // 12 Mb
+        var filePutResult = await _client.UploadFile(fileName, StreamContentType, data, _ct);
 
         filePutResult
             .Should().BeTrue();
@@ -319,8 +298,8 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     public async Task UploadCyrillicName()
     {
         var fileName = $"при(ве)+т_как23дела{Guid.NewGuid()}.pdf";
-        using var data = StorageFixture.GetByteStream();
-        var uploadResult = await _client.UploadFile(fileName, data, StorageFixture.StreamContentType, _ct);
+        using var data = GetByteStream();
+        var uploadResult = await _client.UploadFile(fileName, StreamContentType, data, _ct);
 
         await DeleteTestFile(fileName);
 
@@ -333,10 +312,7 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     {
         var fileName = await CreateTestFile();
         await _client
-            .Invoking(client => client.UploadFile(
-                fileName, StorageFixture.GetByteStream(),
-                StorageFixture.StreamContentType,
-                _ct))
+            .Invoking(client => client.UploadFile(fileName, StreamContentType, GetByteStream(), _ct))
             .Should().NotThrowAsync();
 
         await DeleteTestFile(fileName);
@@ -398,32 +374,32 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     [Fact]
     public async Task ThrowIfBucketNotExists()
     {
-        var fileArray = StorageFixture.GetByteArray();
+        var fileArray = GetByteArray();
         var fileName = _fixture.Create<string>();
-        var fileStream = StorageFixture.GetByteStream();
+        var fileStream = GetByteStream();
 
         await _notExistsBucketClient
             .Invoking(client => client.DeleteFile(fileName, _ct))
             .Should().ThrowAsync<HttpRequestException>();
 
         await _notExistsBucketClient
-            .Invoking(client => client.UploadFile(fileName, fileStream, StorageFixture.StreamContentType, _ct))
+            .Invoking(client => client.UploadFile(fileName, StreamContentType, fileStream, _ct))
             .Should().ThrowAsync<HttpRequestException>();
 
         await _notExistsBucketClient
-            .Invoking(client => client.UploadFile(fileName, fileArray, StorageFixture.StreamContentType, _ct))
+            .Invoking(client => client.UploadFile(fileName, StreamContentType, fileArray, _ct))
             .Should().ThrowAsync<HttpRequestException>();
     }
 
     private async Task<string> CreateTestFile(
         string? fileName = null,
-        string contentType = StorageFixture.StreamContentType,
+        string contentType = StreamContentType,
         int? size = null)
     {
         fileName ??= _fixture.Create<string>();
-        using var data = StorageFixture.GetByteStream(size ?? 1 * 1024 * 1024); // 1 Mb
+        using var data = GetByteStream(size ?? 1 * 1024 * 1024); // 1 Mb
 
-        var uploadResult = await _client.UploadFile(fileName, data, contentType, _ct);
+        var uploadResult = await _client.UploadFile(fileName, contentType, data, _ct);
 
         uploadResult
             .Should().BeTrue();
@@ -435,7 +411,7 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
     {
         using var getFileResult = await _client.GetFile(fileName, _ct);
 
-        using var memoryStream = StorageFixture.GetEmptyByteStream(getFileResult.Length);
+        using var memoryStream = GetEmptyByteStream(getFileResult.Length);
         var stream = await getFileResult.GetStream(_ct);
         await stream.CopyToAsync(memoryStream, _ct);
 
@@ -450,7 +426,7 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 
         using var getFileResult = await _client.GetFile(fileName, _ct);
 
-        using var memoryStream = StorageFixture.GetEmptyByteStream(getFileResult.Length);
+        using var memoryStream = GetEmptyByteStream(getFileResult.Length);
         var stream = await getFileResult.GetStream(_ct);
         await stream.CopyToAsync(memoryStream, _ct);
 

@@ -119,7 +119,7 @@ public class S3Benchmark
         result++;
 
         _inputData.Seek(0, SeekOrigin.Begin);
-        var fileUploadResult = await _storageClient.UploadFile(_fileId, _inputData, "application/pdf", _cancellation);
+        var fileUploadResult = await _storageClient.UploadFile(_fileId, "application/pdf", _inputData, _cancellation);
         if (!fileUploadResult) ThrowException();
 
         result++;

@@ -9,7 +9,7 @@ namespace Storage;
 /// Wrapper around <see cref="HttpResponseMessage"/> with a data of a file from storage
 /// </summary>
 [DebuggerDisplay("{ToString()}")]
-public readonly struct StorageFile : IDisposable
+public sealed class StorageFile : IDisposable
 {
     /// <summary>
     /// Type of file content in MIME
