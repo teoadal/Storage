@@ -11,7 +11,7 @@ internal static class BenchmarkHelper
     public static readonly byte[] StreamBuffer = new byte[2048];
 
     // ReSharper disable once InconsistentNaming
-    public static AmazonS3Client CreateAWSClient(StorageSettings settings)
+    public static AmazonS3Client CreateAWSClient(S3Settings settings)
     {
         var scheme = settings.UseHttps ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
         var port = settings.Port.HasValue ? $":{settings.Port}" : string.Empty;
@@ -26,7 +26,7 @@ internal static class BenchmarkHelper
             });
     }
 
-    public static MinioClient CreateMinioClient(StorageSettings settings)
+    public static MinioClient CreateMinioClient(S3Settings settings)
     {
         var builder = new MinioClient();
         var port = settings.Port;
@@ -39,9 +39,9 @@ internal static class BenchmarkHelper
             .Build();
     }
 
-    public static StorageClient CreateStoragesClient(StorageSettings settings) => new(settings);
+    public static S3Client CreateStoragesClient(S3Settings settings) => new(settings);
 
-    public static void EnsureBucketExists(StorageClient client, CancellationToken cancellation)
+    public static void EnsureBucketExists(S3Client client, CancellationToken cancellation)
     {
         if (client.IsBucketExists(cancellation).GetAwaiter().GetResult()) return;
 
@@ -49,7 +49,7 @@ internal static class BenchmarkHelper
     }
 
     public static void EnsureFileExists(
-        IConfiguration config, StorageClient client, string fileName,
+        IConfiguration config, S3Client client, string fileName,
         CancellationToken cancellation)
     {
         var fileData = ReadBigFile(config);
@@ -94,9 +94,9 @@ internal static class BenchmarkHelper
         return result;
     }
 
-    public static StorageSettings ReadSettings(IConfiguration config)
+    public static S3Settings ReadSettings(IConfiguration config)
     {
-        var settings = config.GetRequiredSection("S3Storage").Get<StorageSettings>();
+        var settings = config.GetRequiredSection("S3Storage").Get<S3Settings>();
         if (settings == null || string.IsNullOrEmpty(settings.EndPoint))
         {
             throw new Exception("S3Storage configuration is not found");
@@ -105,7 +105,7 @@ internal static class BenchmarkHelper
         var isContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER");
         if (isContainer != null && bool.TryParse(isContainer, out var value) && value)
         {
-            settings = new StorageSettings
+            settings = new S3Settings
             {
                 AccessKey = settings.AccessKey,
                 Bucket = settings.Bucket,

@@ -9,7 +9,7 @@ namespace Storage;
 /// Wrapper around <see cref="HttpResponseMessage"/> with a data of a file from storage
 /// </summary>
 [DebuggerDisplay("{ToString()}")]
-public sealed class StorageFile : IDisposable
+public sealed class S3File : IDisposable
 {
     /// <summary>
     /// Type of file content in MIME
@@ -51,7 +51,7 @@ public sealed class StorageFile : IDisposable
 
     private readonly HttpResponseMessage _response;
 
-    internal StorageFile(HttpResponseMessage response)
+    internal S3File(HttpResponseMessage response)
     {
         _response = response;
     }
@@ -66,11 +66,11 @@ public sealed class StorageFile : IDisposable
         if (!_response.IsSuccessStatusCode) return Stream.Null;
 
         var stream = await _response.Content.ReadAsStreamAsync(cancellation).ConfigureAwait(false);
-        return new StorageStream(_response, stream);
+        return new S3Stream(_response, stream);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator bool(StorageFile file) => file._response.IsSuccessStatusCode;
+    public static implicit operator bool(S3File file) => file._response.IsSuccessStatusCode;
 
     [ExcludeFromCodeCoverage]
     public override string ToString()

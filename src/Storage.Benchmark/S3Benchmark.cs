@@ -110,26 +110,26 @@ public class S3Benchmark
     {
         var result = 0;
 
-        var bucketExistsResult = await _storageClient.IsBucketExists(_cancellation);
+        var bucketExistsResult = await _s3Client.IsBucketExists(_cancellation);
         if (!bucketExistsResult) ThrowException();
         result++;
 
-        var fileExistsResult = await _storageClient.IsFileExists(_fileId, _cancellation);
+        var fileExistsResult = await _s3Client.IsFileExists(_fileId, _cancellation);
         if (fileExistsResult) ThrowException();
         result++;
 
         _inputData.Seek(0, SeekOrigin.Begin);
-        var fileUploadResult = await _storageClient.UploadFile(_fileId, "application/pdf", _inputData, _cancellation);
+        var fileUploadResult = await _s3Client.UploadFile(_fileId, "application/pdf", _inputData, _cancellation);
         if (!fileUploadResult) ThrowException();
 
         result++;
 
-        fileExistsResult = await _storageClient.IsFileExists(_fileId, _cancellation);
+        fileExistsResult = await _s3Client.IsFileExists(_fileId, _cancellation);
         if (!fileExistsResult) ThrowException();
         result++;
 
         _outputData.Seek(0, SeekOrigin.Begin);
-        var storageFile = await _storageClient.GetFile(_fileId, _cancellation);
+        var storageFile = await _s3Client.GetFile(_fileId, _cancellation);
         if (!storageFile) ThrowException(storageFile.ToString());
 
         var fileStream = await storageFile.GetStream(_cancellation);
@@ -139,7 +139,7 @@ public class S3Benchmark
 
         result++;
 
-        await _storageClient.DeleteFile(_fileId, _cancellation);
+        await _s3Client.DeleteFile(_fileId, _cancellation);
         return ++result;
     }
 
@@ -154,7 +154,7 @@ public class S3Benchmark
     private IAmazonS3 _amazonClient = null!;
     private TransferUtility _amazonTransfer = null!;
     private MinioClient _minioClient = null!;
-    private StorageClient _storageClient = null!;
+    private S3Client _s3Client = null!;
 
     [GlobalSetup]
     public void Config()
@@ -171,15 +171,15 @@ public class S3Benchmark
         _amazonClient = BenchmarkHelper.CreateAWSClient(settings);
         _amazonTransfer = new TransferUtility(_amazonClient);
         _minioClient = BenchmarkHelper.CreateMinioClient(settings);
-        _storageClient = BenchmarkHelper.CreateStoragesClient(settings);
+        _s3Client = BenchmarkHelper.CreateStoragesClient(settings);
 
-        BenchmarkHelper.EnsureBucketExists(_storageClient, _cancellation);
+        BenchmarkHelper.EnsureBucketExists(_s3Client, _cancellation);
     }
 
     [GlobalCleanup]
     public void Clear()
     {
-        _storageClient.Dispose();
+        _s3Client.Dispose();
         _inputData.Dispose();
         _outputData.Dispose();
     }

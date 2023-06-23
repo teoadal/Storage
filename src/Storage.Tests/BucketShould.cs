@@ -6,13 +6,13 @@ namespace Storage.Tests;
 public sealed class BucketShould : IClassFixture<StorageFixture>
 {
     private readonly CancellationToken _cancellation;
-    private readonly StorageClient _client;
+    private readonly S3Client _client;
     private readonly StorageFixture _fixture;
 
     public BucketShould(StorageFixture fixture)
     {
         _cancellation = CancellationToken.None;
-        _client = fixture.StorageClient;
+        _client = fixture.S3Client;
         _fixture = fixture;
     }
 
@@ -22,7 +22,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
         var settings = _fixture.Settings;
 
         // don't use using here
-        var client = new StorageClient(new StorageSettings
+        var client = new S3Client(new S3Settings
         {
             AccessKey = settings.AccessKey,
             Bucket = _fixture.Create<string>(),
@@ -55,7 +55,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
         var settings = _fixture.Settings;
 
         // don't dispose it
-        var client = new StorageClient(new StorageSettings
+        var client = new S3Client(new S3Settings
         {
             AccessKey = settings.AccessKey,
             Bucket = _fixture.Create<string>(),
@@ -85,7 +85,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
         var settings = _fixture.Settings;
 
         // don't use using here
-        var client = new StorageClient(new StorageSettings
+        var client = new S3Client(new S3Settings
         {
             AccessKey = settings.AccessKey,
             Bucket = _fixture.Create<string>(),
@@ -100,7 +100,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
             .Should().NotThrowAsync();
     }
 
-    private async Task DeleteTestBucket(StorageClient client)
+    private async Task DeleteTestBucket(S3Client client)
     {
         var bucketDeleteResult = await client.DeleteBucket(_cancellation);
 

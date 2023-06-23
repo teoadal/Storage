@@ -2,7 +2,7 @@
 
 namespace Storage;
 
-internal sealed class StorageStream : Stream
+internal sealed class S3Stream : Stream
 {
     public override long Length
     {
@@ -17,7 +17,7 @@ internal sealed class StorageStream : Stream
     private readonly Stream _stream;
     private readonly HttpResponseMessage _response;
 
-    public StorageStream(HttpResponseMessage response, Stream stream)
+    public S3Stream(HttpResponseMessage response, Stream stream)
     {
         _response = response;
         _stream = stream;

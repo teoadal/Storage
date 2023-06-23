@@ -12,7 +12,7 @@ namespace Storage;
 
 [DebuggerDisplay("Client for '{Bucket}'")]
 [SuppressMessage("ReSharper", "SwitchStatementHandlesSomeKnownEnumValuesWithDefault")]
-public sealed class StorageClient
+public sealed class S3Client
 {
     internal const int DefaultPartSize = 5 * 1024 * 1024; // 5 Mb
 
@@ -34,7 +34,7 @@ public sealed class StorageClient
     private readonly Signature _signature;
     private readonly bool _useHttp2;
 
-    public StorageClient(StorageSettings settings, HttpClient? client = null)
+    public S3Client(S3Settings settings, HttpClient? client = null)
     {
         Bucket = settings.Bucket;
 
@@ -124,7 +124,7 @@ public sealed class StorageClient
         _disposed = true;
     }
 
-    public async Task<StorageFile> GetFile(string fileName, CancellationToken cancellation)
+    public async Task<S3File> GetFile(string fileName, CancellationToken cancellation)
     {
         HttpResponseMessage response;
         using (var request = CreateRequest(HttpMethod.Get, fileName))
@@ -135,13 +135,13 @@ public sealed class StorageClient
         switch (response.StatusCode)
         {
             case HttpStatusCode.OK:
-                return new StorageFile(response);
+                return new S3File(response);
             case HttpStatusCode.NotFound:
                 response.Dispose();
-                return new StorageFile(response);
+                return new S3File(response);
             default:
                 Errors.UnexpectedResult(response);
-                return new StorageFile(null!); // никогда не будет вызвано
+                return new S3File(null!); // никогда не будет вызвано
         }
     }
 
@@ -296,11 +296,11 @@ public sealed class StorageClient
         return false;
     }
 
-    public async Task<StorageUpload> UploadFile(string fileName, string contentType, CancellationToken cancellation)
+    public async Task<S3Upload> UploadFile(string fileName, string contentType, CancellationToken cancellation)
     {
         var encodedFileName = HttpHelper.EncodeName(fileName);
         var uploadId = await MultipartStart(encodedFileName, contentType, cancellation);
-        return new StorageUpload(this, fileName, encodedFileName, uploadId);
+        return new S3Upload(this, fileName, encodedFileName, uploadId);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -481,7 +481,11 @@ public sealed class StorageClient
     private async Task<bool> PutFileMultipart(string fileName, string contentType, Stream data, CancellationToken ct)
     {
         using var upload = await UploadFile(fileName, contentType, ct);
-        return await upload.Upload(data, ct);
+
+        if (await upload.Upload(data, ct) && await upload.Complete(ct)) return true;
+
+        await upload.Abort(ct);
+        return false;
     }
 
     private Task<HttpResponseMessage> Send(HttpRequestMessage request, string payloadHash, CancellationToken ct)

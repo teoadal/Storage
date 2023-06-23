@@ -13,7 +13,7 @@ internal static class Errors
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void Disposed()
     {
-        throw new ObjectDisposedException(nameof(StorageClient));
+        throw new ObjectDisposedException(nameof(S3Client));
     }
     
     [MethodImpl(MethodImplOptions.NoInlining)]

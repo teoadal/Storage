@@ -8,18 +8,18 @@ namespace Storage.Tests;
 public sealed class ObjectShould : IClassFixture<StorageFixture>
 {
     private readonly CancellationToken _ct;
-    private readonly StorageClient _client;
+    private readonly S3Client _client;
     private readonly StorageFixture _fixture;
-    private readonly StorageClient _notExistsBucketClient; // don't dispose it
+    private readonly S3Client _notExistsBucketClient; // don't dispose it
 
     public ObjectShould(StorageFixture fixture)
     {
         _ct = CancellationToken.None;
-        _client = fixture.StorageClient;
+        _client = fixture.S3Client;
         _fixture = fixture;
 
         var settings = _fixture.Settings;
-        _notExistsBucketClient = new StorageClient(new StorageSettings
+        _notExistsBucketClient = new S3Client(new S3Settings
         {
             AccessKey = settings.AccessKey,
             Bucket = _fixture.Create<string>(),

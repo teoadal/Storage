@@ -4,19 +4,19 @@ using Storage.Utils;
 
 namespace Storage;
 
-public sealed class StorageUpload : IDisposable
+public sealed class S3Upload : IDisposable
 {
     public readonly string FileName;
     public readonly string UploadId;
 
     private byte[]? _byteBuffer;
-    private readonly StorageClient _client;
+    private readonly S3Client _client;
     private readonly string _encodedFileName;
     private bool _disposed;
     private string[] _parts;
     private int _partCount;
 
-    internal StorageUpload(StorageClient client, string fileName, string encodedFileName, string uploadId)
+    internal S3Upload(S3Client client, string fileName, string encodedFileName, string uploadId)
     {
         FileName = fileName;
         UploadId = uploadId;
@@ -36,9 +36,26 @@ public sealed class StorageUpload : IDisposable
         ? Task.FromResult(false)
         : _client.MultipartComplete(_encodedFileName, UploadId, _parts, _partCount, cancellation);
 
+    public void Dispose()
+    {
+        if (_disposed) return;
+
+        Array.Clear(_parts, 0, _partCount);
+        ArrayPool<string>.Shared.Return(_parts);
+        _parts = null!;
+
+        if (_byteBuffer != null)
+        {
+            ArrayPool<byte>.Shared.Return(_byteBuffer);
+            _byteBuffer = null;
+        }
+
+        _disposed = true;
+    }
+
     public Task<bool> Upload(Stream data, CancellationToken cancellation)
     {
-        _byteBuffer ??= ArrayPool<byte>.Shared.Rent(StorageClient.DefaultPartSize);
+        _byteBuffer ??= ArrayPool<byte>.Shared.Rent(S3Client.DefaultPartSize);
         return Upload(data, _byteBuffer, cancellation);
     }
 
@@ -69,22 +86,5 @@ public sealed class StorageUpload : IDisposable
         _parts[_partCount++] = partId;
 
         return true;
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-
-        Array.Clear(_parts, 0, _partCount);
-        ArrayPool<string>.Shared.Return(_parts);
-        _parts = null!;
-
-        if (_byteBuffer != null)
-        {
-            ArrayPool<byte>.Shared.Return(_byteBuffer);
-            _byteBuffer = null;
-        }
-
-        _disposed = true;
     }
 }

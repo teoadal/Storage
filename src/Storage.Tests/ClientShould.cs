@@ -5,13 +5,13 @@ namespace Storage.Tests;
 
 public sealed class ClientShould : IClassFixture<StorageFixture>
 {
-    private readonly StorageClient _client;
+    private readonly S3Client _client;
     private readonly StorageFixture _fixture;
 
     public ClientShould(StorageFixture fixture)
     {
         _fixture = fixture;
-        _client = fixture.StorageClient;
+        _client = fixture.S3Client;
     }
 
     [Fact]
@@ -20,7 +20,7 @@ public sealed class ClientShould : IClassFixture<StorageFixture>
         var expected = _fixture.Settings;
         
         var json = System.Text.Json.JsonSerializer.Serialize(expected);
-        var actual = System.Text.Json.JsonSerializer.Deserialize<StorageSettings>(json);
+        var actual = System.Text.Json.JsonSerializer.Deserialize<S3Settings>(json);
 
         actual.Should().BeEquivalentTo(expected);
     }
