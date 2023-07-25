@@ -18,13 +18,11 @@ internal ref struct ValueStringBuilder
         _length = 0;
     }
 
-    #region Append
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Append(char c)
     {
         var pos = _length;
-        if ((uint) pos < (uint) _buffer.Length)
+        if ((uint)pos < (uint)_buffer.Length)
         {
             _buffer[pos] = c;
             _length = pos + 1;
@@ -39,29 +37,43 @@ internal ref struct ValueStringBuilder
     {
         Span<char> buffer = stackalloc char[10];
         var pos = _length;
-        if (value.TryFormat(buffer, out var written))
+        if (value.TryFormat(buffer, out var written, provider: CultureInfo.InvariantCulture))
         {
-            if (pos > _buffer.Length - written) Grow(written);
+            if (pos > _buffer.Length - written)
+			{
+				Grow(written);
+			}
+
             buffer.CopyTo(_buffer[pos..]);
 
             _length = pos + written;
         }
-        else Errors.CantFormatToString(value);
-    }
+        else
+		{
+			Errors.CantFormatToString(value);
+		}
+	}
 
     public void Append(DateTime value, string format)
     {
         Span<char> buffer = stackalloc char[16];
         var pos = _length;
-        if (value.TryFormat(buffer, out var written, format))
+        if (value.TryFormat(buffer, out var written, format, CultureInfo.InvariantCulture))
         {
-            if (pos > _buffer.Length - written) Grow(written);
+            if (pos > _buffer.Length - written)
+			{
+				Grow(written);
+			}
+
             buffer.CopyTo(_buffer[pos..]);
 
             _length = pos + written;
         }
-        else Errors.CantFormatToString(value);
-    }
+        else
+		{
+			Errors.CantFormatToString(value);
+		}
+	}
 
     public void Append(double value)
     {
@@ -69,34 +81,51 @@ internal ref struct ValueStringBuilder
         var pos = _length;
         if (value.TryFormat(buffer, out var written, default, CultureInfo.InvariantCulture))
         {
-            if (pos > _buffer.Length - written) Grow(written);
+            if (pos > _buffer.Length - written)
+			{
+				Grow(written);
+			}
+
             buffer.CopyTo(_buffer[pos..]);
 
             _length = pos + written;
         }
-        else Errors.CantFormatToString(value);
-    }
+        else
+		{
+			Errors.CantFormatToString(value);
+		}
+	}
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Append(string? s)
     {
-        if (string.IsNullOrEmpty(s)) return;
+        if (string.IsNullOrEmpty(s))
+		{
+			return;
+		}
 
         var pos = _length;
-        if (s.Length == 1 && (uint) pos < (uint) _buffer.Length)
+        if (s.Length == 1 && (uint)pos < (uint)_buffer.Length)
         {
             _buffer[pos] = s[0];
             _length = pos + 1;
         }
-        else Append(s.AsSpan());
-    }
+        else
+		{
+			Append(s.AsSpan());
+		}
+	}
 
     public void Append(scoped Span<char> value)
     {
         var pos = _length;
         var valueLength = value.Length;
 
-        if (pos > _buffer.Length - valueLength) Grow(valueLength);
+        if (pos > _buffer.Length - valueLength)
+		{
+			Grow(valueLength);
+		}
+
         value.CopyTo(_buffer[pos..]);
 
         _length = pos + valueLength;
@@ -107,23 +136,31 @@ internal ref struct ValueStringBuilder
         var pos = _length;
         var valueLength = value.Length;
 
-        if (pos > _buffer.Length - valueLength) Grow(valueLength);
+        if (pos > _buffer.Length - valueLength)
+		{
+			Grow(valueLength);
+		}
+
         value.CopyTo(_buffer[pos..]);
 
         _length = pos + valueLength;
     }
 
-    #endregion
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly ReadOnlySpan<char> AsReadonlySpan() => _buffer[.._length];
+    public readonly ReadOnlySpan<char> AsReadonlySpan()
+    {
+	    return _buffer[.._length];
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly void Dispose()
     {
         var toReturn = _array;
-        if (toReturn != null) ArrayPool<char>.Shared.Return(toReturn);
-    }
+        if (toReturn is not null)
+		{
+			ArrayPool<char>.Shared.Return(toReturn);
+		}
+	}
 
     public readonly string Flush()
     {
@@ -136,12 +173,18 @@ internal ref struct ValueStringBuilder
         return result;
     }
 
-    public void RemoveLast() => _length--;
+    public void RemoveLast()
+    {
+	    _length--;
+    }
 
     [ExcludeFromCodeCoverage]
-    public readonly override string ToString() => _length == 0
-        ? string.Empty
-        : _buffer[.._length].ToString();
+    public override readonly string ToString()
+    {
+	    return _length is 0
+		    ? string.Empty
+		    : _buffer[.._length].ToString();
+    }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private void GrowAndAppend(char c)
@@ -155,9 +198,9 @@ internal ref struct ValueStringBuilder
     {
         const uint arrayMaxLength = 0x7FFFFFC7; // same as Array.MaxLength
 
-        var newCapacity = (int) Math.Max(
-            (uint) (_length + additionalCapacityBeyondPos),
-            Math.Min((uint) _buffer.Length * 2, arrayMaxLength));
+        var newCapacity = (int)Math.Max(
+            (uint)(_length + additionalCapacityBeyondPos),
+            Math.Min((uint)_buffer.Length * 2, arrayMaxLength));
 
         var poolArray = ArrayPool<char>.Shared.Rent(newCapacity);
 
@@ -165,7 +208,7 @@ internal ref struct ValueStringBuilder
 
         var toReturn = _array;
         _buffer = _array = poolArray;
-        if (toReturn != null)
+        if (toReturn is not null)
         {
             ArrayPool<char>.Shared.Return(toReturn);
         }

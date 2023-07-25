@@ -7,7 +7,7 @@ internal static class XmlStreamReader
         Span<char> buffer = stackalloc char[valueBufferLength];
 
         var written = ReadTo(stream, elementName, ref buffer);
-        return written == -1
+        return written is -1
             ? string.Empty
             : buffer[..written].ToString();
     }
@@ -21,16 +21,22 @@ internal static class XmlStreamReader
         while (true)
         {
             var nextByte = stream.ReadByte();
-            if (nextByte == -1) break;
+            if (nextByte is -1)
+			{
+				break;
+			}
 
-            var nextChar = (char) nextByte;
+            var nextChar = (char)nextByte;
             if (sectionStarted)
             {
                 if (nextChar == elementName[expectedIndex])
                 {
                     if (++expectedIndex == propertyLength)
                     {
-                        if ((char) stream.ReadByte() == '>') return ReadValue(stream, ref valueBuffer);
+                        if ((char)stream.ReadByte() is '>')
+						{
+							return ReadValue(stream, ref valueBuffer);
+						}
 
                         expectedIndex = 0;
                         sectionStarted = false;
@@ -44,8 +50,11 @@ internal static class XmlStreamReader
                 continue;
             }
 
-            if (nextChar == '<') sectionStarted = true;
-        }
+            if (nextChar is '<')
+			{
+				sectionStarted = true;
+			}
+		}
 
         return -1;
     }
@@ -56,10 +65,16 @@ internal static class XmlStreamReader
         while (true)
         {
             var nextByte = stream.ReadByte();
-            if (nextByte == -1) break;
+            if (nextByte is -1)
+			{
+				break;
+			}
 
-            var nextChar = (char) nextByte;
-            if (nextChar == '<') return index;
+            var nextChar = (char)nextByte;
+            if (nextChar is '<')
+			{
+				return index;
+			}
 
             valueBuffer[index++] = nextChar;
         }
