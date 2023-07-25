@@ -39,9 +39,11 @@ internal readonly struct HttpHelper
 
 		try
 		{
-			foreach (ref readonly var symbol in byteBuffer.AsSpan(0, encoded))
+			var span = byteBuffer.AsSpan(0, encoded);
+			for (var index = 0; index < span.Length; index++)
 			{
-				if (validCharacters.Contains((char)symbol))
+				var symbol = (char)span[index];
+				if (validCharacters.Contains(symbol))
 				{
 					builder.Append(symbol);
 				}
