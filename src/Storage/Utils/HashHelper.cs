@@ -27,7 +27,7 @@ internal static class HashHelper
         Span<char> buffer = stackalloc char[2];
         using var builder = new ValueStringBuilder(stackalloc char[64]);
 
-        foreach (var element in data)
+        foreach (ref readonly var element in data)
         {
             builder.Append(buffer[..StringUtils.FormatX2(ref buffer, element)]);
         }
