@@ -18,7 +18,7 @@ AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
            [Host]   : .NET 7.0.2 (7.0.222.60605), X64 RyuJIT AVX2 DEBUG
            .NET 7.0 : .NET 7.0.2 (7.0.222.60605), X64 RyuJIT AVX2
 
-Job = .NET 7.0  Runtime=.NET 7.0 
+Job = .NET 7.0  Runtime=.NET 7.0
 ```
 
 | Method  |    Mean | Ratio |       Gen0 |      Gen1 |    Allocated | Alloc Ratio |
@@ -26,6 +26,21 @@ Job = .NET 7.0  Runtime=.NET 7.0
 | Aws     | 2.173 s |  1.73 | 25000.0000 | 8000.0000 | 207 341.8 KB |      252.99 |
 | Minio   | 1.365 s |  1.08 |          - |         - | 279 989.3 KB |      341.64 |
 | Storage | 1.282 s |  1.00 |          - |         - |     819.5 KB |        1.00 |
+```ini
+BenchmarkDotNet=v0.13.5, OS=macOS Ventura 13.4 (22F66) [Darwin 22.5.0]
+Apple M1 Pro, 1 CPU, 10 logical and 10 physical cores
+.NET SDK=7.0.304
+  [Host]   : .NET 7.0.7 (7.0.723.27404), Arm64 RyuJIT AdvSIMD
+  .NET 7.0 : .NET 7.0.7 (7.0.723.27404), Arm64 RyuJIT AdvSIMD
+
+Job=.NET 7.0  Runtime=.NET 7.0
+```
+| Method  |    Mean |    Error |   StdDev | Ratio | RatioSD |       Gen0 |      Gen1 |    Allocated | Alloc Ratio |
+|---------|--------:|---------:|---------:|------:|--------:|-----------:|----------:|-------------:|------------:|
+| Aws     | 2.320 s | 0.0444 s | 0.0416 s |  1.01 |    0.02 | 33000.0000 | 8000.0000 | 203327.85 KB |      298.69 |
+| Minio   | 2.457 s | 0.0476 s | 0.0585 s |  1.08 |    0.03 |          - |         - | 279825.76 KB |      411.06 |
+| Storage | 2.292 s | 0.0351 s | 0.0329 s |  1.00 |    0.00 |          - |         - |    680.74 KB |        1.00 |
+
 
 ## Создание клиента
 
@@ -36,7 +51,7 @@ var storageClient = new S3Client(new S3Settings
 {
     AccessKey = "ROOTUSER",
     Bucket = "mybucket",
-    EndPoint = "localhost",     // для Yandex.Objects это "storage.yandexcloud.net" 
+    EndPoint = "localhost",     // для Yandex.Objects это "storage.yandexcloud.net"
     Port = 9000,                // стандартный порт Minio - 9000, для Yandex.Objects указывать не нужно
     SecretKey = "ChangeMe123",
     UseHttps = false,           // для Yandex.Objects укажите true
@@ -56,7 +71,7 @@ Amazon S3 не тестировался.
 
 ```csharp
 bool bucketCreateResult = await storageClient.CreateBucket(cancellationToken);
-Console.WriteLine(bucketCreateResult 
+Console.WriteLine(bucketCreateResult
     ? "Bucket создан"
     : $"Bucket не был создан");
 ```
@@ -106,7 +121,7 @@ if (!await upload.Upload(byteArray, cancellationToken)) { // загружаем 
     await upload.Abort(cancellationToken); // отменяем загрузку
 }
 else {
-    await upload.Complete(cancellationToken); // завершаем загрузку    
+    await upload.Complete(cancellationToken); // завершаем загрузку
 }
 
 ```
