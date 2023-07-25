@@ -9,8 +9,6 @@ public sealed class StorageFixture : IDisposable
 
 	private const int DefaultByteArraySize = 1 * 1024 * 1024; // 7Mb
 
-	private readonly HttpClient _httpClient;
-	private readonly S3Client _s3Client;
 	private Fixture? _fixture;
 
 	public StorageFixture()
@@ -25,7 +23,7 @@ public sealed class StorageFixture : IDisposable
 		var environmentHttps = Environment.GetEnvironmentVariable("STORAGE_HTTPS");
 		var https = !string.IsNullOrEmpty(environmentHttps) && bool.Parse(environmentHttps);
 
-		var settings = new S3Settings
+		Settings = new S3Settings
 		{
 			AccessKey = Environment.GetEnvironmentVariable("STORAGE_KEY") ?? "ROOTUSER",
 			Bucket = Environment.GetEnvironmentVariable("STORAGE_BUCKET") ?? "reconfig",
@@ -35,11 +33,17 @@ public sealed class StorageFixture : IDisposable
 			UseHttps = https,
 		};
 
-		_httpClient = new HttpClient();
-		_s3Client = new S3Client(settings);
+		HttpClient = new HttpClient();
+		S3Client = new S3Client(Settings);
 	}
 
-	public Fixture Mocks => _fixture ??= new Fixture();
+	internal S3Settings Settings { get; }
+
+	internal S3Client S3Client { get; }
+
+	internal HttpClient HttpClient { get; }
+
+	internal Fixture Mocks => _fixture ??= new Fixture();
 
 	public static byte[] GetByteArray(int size = DefaultByteArraySize)
 	{
@@ -67,8 +71,8 @@ public sealed class StorageFixture : IDisposable
 
 	public void Dispose()
 	{
-		_httpClient.Dispose();
-		_s3Client.Dispose();
+		HttpClient.Dispose();
+		S3Client.Dispose();
 	}
 
 	public T Create<T>()
