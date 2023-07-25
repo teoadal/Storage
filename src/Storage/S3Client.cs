@@ -10,11 +10,13 @@ using static Storage.Utils.HashHelper;
 
 namespace Storage;
 
-[DebuggerDisplay("Client for '{_bucketName}'")]
+[DebuggerDisplay("Client for '{Bucket}'")]
 [SuppressMessage("ReSharper", "SwitchStatementHandlesSomeKnownEnumValuesWithDefault")]
 public sealed class S3Client
 {
     internal const int DefaultPartSize = 5 * 1024 * 1024; // 5 Mb
+
+    internal readonly string Bucket;
 
     private static readonly string[] _s3Headers = // trimmed, lower invariant, ordered
     {
@@ -23,7 +25,6 @@ public sealed class S3Client
         "x-amz-date",
     };
 
-    private readonly string _bucketName;
     private readonly string _bucket;
     private readonly string _endpoint;
     private readonly HttpHelper _http;
@@ -35,9 +36,9 @@ public sealed class S3Client
 
     public S3Client(S3Settings settings, HttpClient? client = null)
     {
-	    _bucketName = settings.Bucket;
+	    Bucket = settings.Bucket;
 
-	    var bucket = _bucketName.ToLowerInvariant();
+	    var bucket = Bucket.ToLowerInvariant();
 	    var scheme = settings.UseHttps ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
 	    var port = settings.Port.HasValue ? $":{settings.Port}" : string.Empty;
 

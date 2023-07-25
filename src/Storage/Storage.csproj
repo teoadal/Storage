@@ -38,4 +38,9 @@
       </PackageReference>
     </ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="Storage.Tests" />
+		<InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+	</ItemGroup>
+
 </Project>
