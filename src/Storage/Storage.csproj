@@ -40,6 +40,7 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Storage.Tests" />
+		<InternalsVisibleTo Include="Storage.Benchmark" />
 		<InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
 	</ItemGroup>
 
