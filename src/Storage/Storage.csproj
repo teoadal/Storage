@@ -20,6 +20,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
     </PropertyGroup>
 
     <ItemGroup>
@@ -28,6 +29,13 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Storage.Benchmark" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.507">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
     </ItemGroup>
 
 </Project>
