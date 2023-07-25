@@ -1,70 +1,78 @@
-﻿using AutoFixture;
+﻿using System.Globalization;
+using AutoFixture;
 
 namespace Storage.Tests.Mocks;
 
 public sealed class StorageFixture : IDisposable
 {
-    public const string StreamContentType = "application/octet-stream";
+	public const string StreamContentType = "application/octet-stream";
 
-    public Fixture Mocks => _fixture ??= new Fixture();
+	private const int DefaultByteArraySize = 1 * 1024 * 1024; // 7Mb
 
-    public readonly HttpClient HttpClient;
-    public readonly S3Client S3Client;
-    public readonly S3Settings Settings;
+	private readonly HttpClient _httpClient;
+	private readonly S3Client _s3Client;
+	private Fixture? _fixture;
 
-    private const int DefaultByteArraySize = 1 * 1024 * 1024; //7Mb
-    private Fixture? _fixture;
+	public StorageFixture()
+	{
+		var environmentPort = Environment.GetEnvironmentVariable("STORAGE_PORT");
+		int? port = string.IsNullOrEmpty(environmentPort)
+			? 5300
+			: environmentPort is "null"
+				? null
+				: int.Parse(environmentPort, CultureInfo.InvariantCulture);
 
-    public StorageFixture()
-    {
-        var environmentPort = Environment.GetEnvironmentVariable("STORAGE_PORT");
-        int? port = string.IsNullOrEmpty(environmentPort)
-            ? 5300
-            : environmentPort == "null"
-                ? null
-                : int.Parse(environmentPort);
+		var environmentHttps = Environment.GetEnvironmentVariable("STORAGE_HTTPS");
+		var https = !string.IsNullOrEmpty(environmentHttps) && bool.Parse(environmentHttps);
 
-        var environmentHttps = Environment.GetEnvironmentVariable("STORAGE_HTTPS");
-        var https = !string.IsNullOrEmpty(environmentHttps) && bool.Parse(environmentHttps);
+		var settings = new S3Settings
+		{
+			AccessKey = Environment.GetEnvironmentVariable("STORAGE_KEY") ?? "ROOTUSER",
+			Bucket = Environment.GetEnvironmentVariable("STORAGE_BUCKET") ?? "reconfig",
+			EndPoint = Environment.GetEnvironmentVariable("STORAGE_ENDPOINT") ?? "localhost",
+			Port = port,
+			SecretKey = Environment.GetEnvironmentVariable("STORAGE_SECRET") ?? "ChangeMe123",
+			UseHttps = https,
+		};
 
-        Settings = new S3Settings
-        {
-            AccessKey = Environment.GetEnvironmentVariable("STORAGE_KEY") ?? "ROOTUSER",
-            Bucket = Environment.GetEnvironmentVariable("STORAGE_BUCKET") ?? "reconfig",
-            EndPoint = Environment.GetEnvironmentVariable("STORAGE_ENDPOINT") ?? "localhost",
-            Port = port,
-            SecretKey = Environment.GetEnvironmentVariable("STORAGE_SECRET") ?? "ChangeMe123",
-            UseHttps = https
-        };
+		_httpClient = new HttpClient();
+		_s3Client = new S3Client(settings);
+	}
 
-        HttpClient = new HttpClient();
-        S3Client = new S3Client(Settings);
-    }
+	public Fixture Mocks => _fixture ??= new Fixture();
 
-    public T Create<T>() => Mocks.Create<T>();
+	public static byte[] GetByteArray(int size = DefaultByteArraySize)
+	{
+		var random = Random.Shared;
+		var bytes = new byte[size];
+		for (var i = 0; i < bytes.Length; i++)
+		{
+			bytes[i] = (byte)random.Next();
+		}
 
-    public static byte[] GetByteArray(int size = DefaultByteArraySize)
-    {
-        var random = Random.Shared;
-        var bytes = new byte[size];
-        for (var i = 0; i < bytes.Length; i++)
-        {
-            bytes[i] = (byte) random.Next();
-        }
+		return bytes;
+	}
 
-        return bytes;
-    }
+	public static MemoryStream GetByteStream(int size = DefaultByteArraySize)
+	{
+		return new MemoryStream(GetByteArray(size));
+	}
 
-    public static MemoryStream GetByteStream(int size = DefaultByteArraySize) => new(GetByteArray(size));
+	public static MemoryStream GetEmptyByteStream(long? size)
+	{
+		return size.HasValue
+			? new MemoryStream(new byte[(int)size])
+			: new MemoryStream();
+	}
 
-    public static MemoryStream GetEmptyByteStream(long? size) => size.HasValue
-        ? new MemoryStream(new byte[(int) size])
-        : new MemoryStream();
+	public void Dispose()
+	{
+		_httpClient.Dispose();
+		_s3Client.Dispose();
+	}
 
-
-    public void Dispose()
-    {
-        HttpClient.Dispose();
-        S3Client.Dispose();
-    }
+	public T Create<T>()
+	{
+		return Mocks.Create<T>();
+	}
 }
