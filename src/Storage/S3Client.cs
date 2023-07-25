@@ -12,6 +12,7 @@ namespace Storage;
 
 [DebuggerDisplay("Client for '{Bucket}'")]
 [SuppressMessage("ReSharper", "SwitchStatementHandlesSomeKnownEnumValuesWithDefault")]
+[SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:Fields should be private")]
 public sealed class S3Client
 {
     internal const int DefaultPartSize = 5 * 1024 * 1024; // 5 Mb
@@ -374,7 +375,7 @@ public sealed class S3Client
             }
         }
 
-        var result = response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK}
+        var result = response is { IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK }
             ? response.Headers.ETag?.Tag
             : null;
 
