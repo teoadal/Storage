@@ -20,7 +20,10 @@ internal static class HashHelper
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string GetPayloadHash(string data) => Sha256ToHex(data);
+    public static string GetPayloadHash(string data)
+    {
+	    return Sha256ToHex(data);
+    }
 
     public static string ToHex(ReadOnlySpan<byte> data)
     {

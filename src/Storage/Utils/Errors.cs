@@ -21,8 +21,7 @@ internal static class Errors
     public static void UnexpectedResult(HttpResponseMessage response)
     {
         var reason = response.ReasonPhrase ?? response.ToString();
-        var exception = new HttpRequestException("Storage has returned an unexpected result: " +
-                                                 $"{response.StatusCode} ({reason})");
+        var exception = new HttpRequestException($"Storage has returned an unexpected result: {response.StatusCode} ({reason})");
 
         response.Dispose();
 

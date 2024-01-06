@@ -116,7 +116,7 @@ internal sealed class Signature
 		}
 
         var textLength = query.Length;
-        var equalIndex = query.IndexOf('=');
+        var equalIndex = query.IndexOf('=', StringComparison.Ordinal);
         if (equalIndex is -1)
 		{
 			equalIndex = textLength;
@@ -243,7 +243,7 @@ internal sealed class Signature
         canonical.Dispose();
     }
 
-    [SuppressMessage("ReSharper", "InvertIf")]
+    [SuppressMessage("ReSharper", "InvertIf", Justification = "Approved")]
     private static void AppendSha256ToHex(ref ValueStringBuilder builder, scoped ReadOnlySpan<char> value)
     {
         var count = Encoding.UTF8.GetByteCount(value);
@@ -288,7 +288,7 @@ internal sealed class Signature
         return string.Intern(builder.Flush());
     }
 
-    [SuppressMessage("ReSharper", "InvertIf")]
+    [SuppressMessage("ReSharper", "InvertIf", Justification = "Approved")]
     private static int Sign(ref Span<byte> buffer, ReadOnlySpan<byte> key, scoped ReadOnlySpan<char> content)
     {
         var count = Encoding.UTF8.GetByteCount(content);
