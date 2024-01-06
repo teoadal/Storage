@@ -8,25 +8,30 @@ internal static class StringUtils
 {
     private static StringBuilder? _sharedBuilder;
 
-    #region Append
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static StringBuilder Append(this StringBuilder builder, string start, int middle, string end)
+    {
+	    return builder
+		    .Append(start)
+		    .Append(middle)
+		    .Append(end);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static StringBuilder Append(this StringBuilder builder, string start, int middle, string end) => builder
-        .Append(start)
-        .Append(middle)
-        .Append(end);
+    public static StringBuilder Append(this StringBuilder builder, string start, string middle, string end)
+    {
+	    return builder
+		    .Append(start)
+		    .Append(middle)
+		    .Append(end);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static StringBuilder Append(this StringBuilder builder, string start, string middle, string end) => builder
-        .Append(start)
-        .Append(middle)
-        .Append(end);
-
-    #endregion
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static StringBuilder GetBuilder() => Interlocked.Exchange(ref _sharedBuilder, null)
-                                                ?? new StringBuilder(4096);
+    public static StringBuilder GetBuilder()
+    {
+	    return Interlocked.Exchange(ref _sharedBuilder, null)
+	           ?? new StringBuilder(4096);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int Format(ref Span<char> buffer, DateTime dateTime, string format)
@@ -47,7 +52,7 @@ internal static class StringUtils
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int FormatX2(ref Span<char> buffer, char value)
     {
-        return ((int) value).TryFormat(buffer, out var written, "x2", CultureInfo.InvariantCulture)
+        return ((int)value).TryFormat(buffer, out var written, "x2", CultureInfo.InvariantCulture)
             ? written
             : -1;
     }

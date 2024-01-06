@@ -1,11 +1,4 @@
 ﻿using BenchmarkDotNet.Running;
+using Storage.Benchmark;
 
-namespace Storage.Benchmark;
-
-public static class Program
-{
-    public static void Main(string[] args)
-    {
-        BenchmarkRunner.Run<S3Benchmark>();
-    }
-}
+BenchmarkRunner.Run<S3Benchmark>();

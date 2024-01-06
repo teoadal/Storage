@@ -28,7 +28,9 @@ internal sealed class Signature
 
     public string Calculate(
         HttpRequestMessage request,
-        string payloadHash, string[] signedHeaders, DateTime requestDate)
+        string payloadHash,
+        string[] signedHeaders,
+        DateTime requestDate)
     {
         var builder = new ValueStringBuilder(stackalloc char[512]);
 
@@ -61,8 +63,9 @@ internal sealed class Signature
     }
 
     private static void AppendCanonicalHeaders(
-        ref ValueStringBuilder builder,
-        HttpRequestMessage request, string[] signedHeaders)
+        scoped ref ValueStringBuilder builder,
+        HttpRequestMessage request,
+        string[] signedHeaders)
     {
         var sortedHeaders = Interlocked.Exchange(ref _headerSort, null) ?? new SortedDictionary<string, string>();
         foreach (var requestHeader in request.Headers)
@@ -99,21 +102,33 @@ internal sealed class Signature
         Interlocked.Exchange(ref _headerSort, sortedHeaders);
     }
 
-    private static void AppendCanonicalQueryParameters(ref ValueStringBuilder builder, string? query)
+    private static void AppendCanonicalQueryParameters(scoped ref ValueStringBuilder builder, string? query)
     {
-        if (string.IsNullOrEmpty(query) || query == "?") return;
+        if (string.IsNullOrEmpty(query) || query == "?")
+		{
+			return;
+		}
 
         var scanIndex = 0;
-        if (query[0] == '?') scanIndex = 1;
+        if (query[0] is '?')
+		{
+			scanIndex = 1;
+		}
 
         var textLength = query.Length;
-        var equalIndex = query.IndexOf('=');
-        if (equalIndex == -1) equalIndex = textLength;
+        var equalIndex = query.IndexOf('=', StringComparison.Ordinal);
+        if (equalIndex is -1)
+		{
+			equalIndex = textLength;
+		}
 
         while (scanIndex < textLength)
         {
             var delimiter = query.IndexOf('&', scanIndex);
-            if (delimiter == -1) delimiter = textLength;
+            if (delimiter is -1)
+			{
+				delimiter = textLength;
+			}
 
             if (equalIndex < delimiter)
             {
@@ -131,8 +146,11 @@ internal sealed class Signature
                 builder.Append('&');
 
                 equalIndex = query.IndexOf('=', delimiter);
-                if (equalIndex == -1) equalIndex = textLength;
-            }
+                if (equalIndex is -1)
+				{
+					equalIndex = textLength;
+				}
+			}
             else
             {
                 if (delimiter > scanIndex)
@@ -151,8 +169,10 @@ internal sealed class Signature
     }
 
     private static void AppendCanonicalRequestHash(
-        ref ValueStringBuilder builder, HttpRequestMessage request,
-        string[] signedHeaders, string payload)
+	    scoped ref ValueStringBuilder builder,
+	    HttpRequestMessage request,
+	    string[] signedHeaders,
+	    string payload)
     {
         var canonical = new ValueStringBuilder(stackalloc char[512]);
         var uri = request.RequestUri!;
@@ -171,12 +191,20 @@ internal sealed class Signature
         canonical.Append(newLine);
 
         var first = true;
-        foreach (var header in signedHeaders)
+        var span = signedHeaders.AsSpan();
+        for (var index = 0; index < span.Length; index++)
         {
-            if (first) first = false;
-            else canonical.Append(';');
+	        var header = span[index];
+	        if (first)
+	        {
+		        first = false;
+	        }
+	        else
+	        {
+		        canonical.Append(';');
+	        }
 
-            canonical.Append(header);
+	        canonical.Append(header);
         }
 
         canonical.Append(newLine);
@@ -187,7 +215,7 @@ internal sealed class Signature
         canonical.Dispose();
     }
 
-    private static void AppendCanonicalRequestHash(ref ValueStringBuilder builder, string url)
+    private static void AppendCanonicalRequestHash(scoped ref ValueStringBuilder builder, string url)
     {
         var uri = new Uri(url);
 
@@ -215,7 +243,7 @@ internal sealed class Signature
         canonical.Dispose();
     }
 
-    [SuppressMessage("ReSharper", "InvertIf")]
+    [SuppressMessage("ReSharper", "InvertIf", Justification = "Approved")]
     private static void AppendSha256ToHex(ref ValueStringBuilder builder, scoped ReadOnlySpan<char> value)
     {
         var count = Encoding.UTF8.GetByteCount(value);
@@ -228,54 +256,39 @@ internal sealed class Signature
         Span<byte> hashBuffer = stackalloc byte[32];
         if (SHA256.TryHashData(byteBuffer.AsSpan(0, encoded), hashBuffer, out var written))
         {
-            Span<char> buffer = stackalloc char[2];
-            foreach (var element in hashBuffer[..written])
-            {
-                builder.Append(buffer[..StringUtils.FormatX2(ref buffer, element)]);
-            }
+	        Span<char> buffer = stackalloc char[2];
+	        for (var index = 0; index < hashBuffer[..written].Length; index++)
+	        {
+		        var element = hashBuffer[..written][index];
+		        builder.Append(buffer[..StringUtils.FormatX2(ref buffer, element)]);
+	        }
         }
 
         pool.Return(byteBuffer);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void AppendStringToSign(ref ValueStringBuilder builder, DateTime requestDate)
-    {
-        builder.Append("AWS4-HMAC-SHA256\n");
-        builder.Append(requestDate, Iso8601DateTime);
-        builder.Append("\n");
-        builder.Append(requestDate, Iso8601Date);
-        builder.Append(_scope);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void CreateSigningKey(ref Span<byte> buffer, DateTime requestDate)
-    {
-        Span<char> dateBuffer = stackalloc char[16];
-
-        Sign(ref buffer, _secretKey, dateBuffer[..StringUtils.Format(ref dateBuffer, requestDate, Iso8601Date)]);
-        Sign(ref buffer, buffer, _region);
-        Sign(ref buffer, buffer, _service);
-        Sign(ref buffer, buffer, "aws4_request");
-    }
-
     private static string NormalizeHeader(string header)
     {
-        var builder = new ValueStringBuilder(stackalloc char[header.Length]);
+        using var builder = new ValueStringBuilder(stackalloc char[header.Length]);
         var culture = CultureInfo.InvariantCulture;
 
         // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
-        foreach (var ch in header)
+        var span = header.AsSpan();
+        for (var index = 0; index < span.Length; index++)
         {
-            if (ch == ' ') continue;
+	        var ch = span[index];
+	        if (ch is ' ')
+	        {
+		        continue;
+	        }
 
-            builder.Append(char.ToLower(ch, culture));
+	        builder.Append(char.ToLower(ch, culture));
         }
 
         return string.Intern(builder.Flush());
     }
 
-    [SuppressMessage("ReSharper", "InvertIf")]
+    [SuppressMessage("ReSharper", "InvertIf", Justification = "Approved")]
     private static int Sign(ref Span<byte> buffer, ReadOnlySpan<byte> key, scoped ReadOnlySpan<char> content)
     {
         var count = Encoding.UTF8.GetByteCount(content);
@@ -295,12 +308,34 @@ internal sealed class Signature
 
     private static string UnescapeString(ReadOnlySpan<char> query)
     {
-        var data = new ValueStringBuilder(stackalloc char[query.Length]);
-        foreach (var ch in query)
+        using var data = new ValueStringBuilder(stackalloc char[query.Length]);
+        for (var index = 0; index < query.Length; index++)
         {
-            data.Append(ch == '+' ? ' ' : ch);
+	        var ch = query[index];
+	        data.Append(ch is '+' ? ' ' : ch);
         }
 
         return Uri.UnescapeDataString(data.Flush());
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void AppendStringToSign(ref ValueStringBuilder builder, DateTime requestDate)
+    {
+	    builder.Append("AWS4-HMAC-SHA256\n");
+	    builder.Append(requestDate, Iso8601DateTime);
+	    builder.Append("\n");
+	    builder.Append(requestDate, Iso8601Date);
+	    builder.Append(_scope);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void CreateSigningKey(ref Span<byte> buffer, DateTime requestDate)
+    {
+	    Span<char> dateBuffer = stackalloc char[16];
+
+	    Sign(ref buffer, _secretKey, dateBuffer[..StringUtils.Format(ref dateBuffer, requestDate, Iso8601Date)]);
+	    Sign(ref buffer, buffer, _region);
+	    Sign(ref buffer, buffer, _service);
+	    Sign(ref buffer, buffer, "aws4_request");
     }
 }

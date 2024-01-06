@@ -2,42 +2,55 @@
 
 internal sealed class InputStream : Stream
 {
-    public override bool CanRead => true;
-    public override bool CanSeek => true;
-    public override bool CanWrite => false;
+	private readonly Stream _baseStream;
 
-    private readonly Stream _baseStream;
+	public InputStream(byte[] data)
+	{
+		_baseStream = new MemoryStream();
+		_baseStream.Write(data);
+	}
 
-    public InputStream(byte[] data)
-    {
-        _baseStream = new MemoryStream();
-        _baseStream.Write(data);
-    }
+	public override long Position
+	{
+		get => _baseStream.Position;
+		set => _baseStream.Position = value;
+	}
 
-    public override void Close()
-    {
-        _baseStream.Seek(0, SeekOrigin.Begin);
-    }
+	public override bool CanRead => true;
 
-    #region Contract
+	public override bool CanSeek => true;
 
-    public override long Length => _baseStream.Length;
+	public override bool CanWrite => false;
 
-    public override long Position
-    {
-        get => _baseStream.Position;
-        set => _baseStream.Position = value;
-    }
+	public override long Length => _baseStream.Length;
 
-    public override void Flush() => _baseStream.Flush();
+	public override void Close()
+	{
+		_baseStream.Seek(0, SeekOrigin.Begin);
+	}
 
-    public override int Read(byte[] buffer, int offset, int count) => _baseStream.Read(buffer, offset, count);
+	public override void Flush()
+	{
+		_baseStream.Flush();
+	}
 
-    public override long Seek(long offset, SeekOrigin origin) => _baseStream.Seek(offset, origin);
+	public override int Read(byte[] buffer, int offset, int count)
+	{
+		return _baseStream.Read(buffer, offset, count);
+	}
 
-    public override void SetLength(long value) => _baseStream.SetLength(value);
+	public override long Seek(long offset, SeekOrigin origin)
+	{
+		return _baseStream.Seek(offset, origin);
+	}
 
-    public override void Write(byte[] buffer, int offset, int count) => _baseStream.Write(buffer, offset, count);
+	public override void SetLength(long value)
+	{
+		_baseStream.SetLength(value);
+	}
 
-    #endregion
+	public override void Write(byte[] buffer, int offset, int count)
+	{
+		_baseStream.Write(buffer, offset, count);
+	}
 }

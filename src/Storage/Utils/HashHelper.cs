@@ -20,14 +20,17 @@ internal static class HashHelper
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string GetPayloadHash(string data) => Sha256ToHex(data);
+    public static string GetPayloadHash(string data)
+    {
+	    return Sha256ToHex(data);
+    }
 
     public static string ToHex(ReadOnlySpan<byte> data)
     {
         Span<char> buffer = stackalloc char[2];
-        var builder = new ValueStringBuilder(stackalloc char[64]);
+        using var builder = new ValueStringBuilder(stackalloc char[64]);
 
-        foreach (var element in data)
+        foreach (ref readonly var element in data)
         {
             builder.Append(buffer[..StringUtils.FormatX2(ref buffer, element)]);
         }
@@ -35,7 +38,7 @@ internal static class HashHelper
         return builder.Flush();
     }
 
-    [SuppressMessage("ReSharper", "InvertIf")]
+    [SuppressMessage("ReSharper", "InvertIf", Justification = "Approved")]
     private static string Sha256ToHex(ReadOnlySpan<char> value)
     {
         var count = Encoding.UTF8.GetByteCount(value);

@@ -6,38 +6,35 @@ using Storage.Utils;
 namespace Storage.Benchmark.InternalBenchmarks;
 
 [SimpleJob(RuntimeMoniker.Net70)]
-[MeanColumn, MemoryDiagnoser]
+[MeanColumn]
+[MemoryDiagnoser]
 public class HashBenchmark
 {
-    [Benchmark]
-    public int ByteHash()
-    {
-        return HashHelper
-            .GetPayloadHash(_byteData)
-            .Length;
-    }
+	private byte[] _byteData = null!;
+	private string _stringData = null!;
 
-    [Benchmark]
-    public int StringHash()
-    {
-        return HashHelper
-            .GetPayloadHash(_stringData)
-            .Length;
-    }
+	[GlobalSetup]
+	public void Config()
+	{
+		var config = BenchmarkHelper.ReadConfiguration();
 
-    #region Configuration
+		_byteData = BenchmarkHelper.ReadBigArray(config);
+		_stringData = "C10F4FFD-BB46-452C-B054-C595EB92248E";
+	}
 
-    private byte[] _byteData = null!;
-    private string _stringData = null!;
+	[Benchmark]
+	public int ByteHash()
+	{
+		return HashHelper
+			.GetPayloadHash(_byteData)
+			.Length;
+	}
 
-    [GlobalSetup]
-    public void Config()
-    {
-        var config = BenchmarkHelper.ReadConfiguration();
-
-        _byteData = BenchmarkHelper.ReadBigArray(config);
-        _stringData = "C10F4FFD-BB46-452C-B054-C595EB92248E";
-    }
-
-    #endregion
+	[Benchmark]
+	public int StringHash()
+	{
+		return HashHelper
+			.GetPayloadHash(_stringData)
+			.Length;
+	}
 }

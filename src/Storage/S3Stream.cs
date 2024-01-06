@@ -2,76 +2,81 @@
 
 namespace Storage;
 
-internal sealed class S3Stream : Stream
+internal sealed class S3Stream(HttpResponseMessage response, Stream stream) : Stream
 {
-    public override long Length
-    {
-        get
-        {
-            _length ??= _response.Content.Headers.ContentLength ?? _stream.Length;
-            return _length.Value;
-        }
-    }
+	private long? _length;
 
-    private long? _length;
-    private readonly Stream _stream;
-    private readonly HttpResponseMessage _response;
+	public override bool CanRead => stream.CanRead;
 
-    public S3Stream(HttpResponseMessage response, Stream stream)
-    {
-        _response = response;
-        _stream = stream;
-    }
+	public override bool CanSeek => stream.CanSeek;
 
-    protected override void Dispose(bool disposing)
-    {
-        _stream.Dispose();
-        _response.Dispose();
-    }
+	public override bool CanWrite => stream.CanWrite;
 
-    #region Contract
+	public override long Length
+	{
+		get
+		{
+			_length ??= response.Content.Headers.ContentLength ?? stream.Length;
+			return _length.Value;
+		}
+	}
 
-    public override bool CanRead => _stream.CanRead;
+	[ExcludeFromCodeCoverage]
+	public override long Position
+	{
+		get => stream.Position;
+		set => stream.Position = value;
+	}
 
-    public override bool CanSeek => _stream.CanSeek;
+	public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+	{
+		return stream.ReadAsync(buffer, offset, count, cancellationToken);
+	}
 
-    public override bool CanWrite => _stream.CanWrite;
+	public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+	{
+		return stream.ReadAsync(buffer, cancellationToken);
+	}
 
-    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-    {
-        return _stream.ReadAsync(buffer, offset, count, cancellationToken);
-    }
+	public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
+	{
+		return stream.CopyToAsync(destination, bufferSize, cancellationToken);
+	}
 
-    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = new CancellationToken())
-    {
-        return _stream.ReadAsync(buffer, cancellationToken);
-    }
+	[ExcludeFromCodeCoverage]
+	public override void Flush()
+	{
+		stream.Flush();
+	}
 
-    public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
-    {
-        return _stream.CopyToAsync(destination, bufferSize, cancellationToken);
-    }
+	public override int Read(byte[] buffer, int offset, int count)
+	{
+		return stream.Read(buffer, offset, count);
+	}
 
-    [ExcludeFromCodeCoverage]
-    public override void Flush() => _stream.Flush();
+	[ExcludeFromCodeCoverage]
+	public override long Seek(long offset, SeekOrigin origin)
+	{
+		return stream.Seek(offset, origin);
+	}
 
-    [ExcludeFromCodeCoverage]
-    public override long Position
-    {
-        get => _stream.Position;
-        set => _stream.Position = value;
-    }
+	[ExcludeFromCodeCoverage]
+	public override void SetLength(long value)
+	{
+		stream.SetLength(value);
+	}
 
-    public override int Read(byte[] buffer, int offset, int count) => _stream.Read(buffer, offset, count);
+	[ExcludeFromCodeCoverage]
+	public override void Write(byte[] buffer, int offset, int count)
+	{
+		stream.Write(buffer, offset, count);
+	}
 
-    [ExcludeFromCodeCoverage]
-    public override long Seek(long offset, SeekOrigin origin) => _stream.Seek(offset, origin);
+	protected override void Dispose(bool disposing)
+	{
+		stream.Dispose();
+		response.Dispose();
 
-    [ExcludeFromCodeCoverage]
-    public override void SetLength(long value) => _stream.SetLength(value);
-
-    [ExcludeFromCodeCoverage]
-    public override void Write(byte[] buffer, int offset, int count) => _stream.Write(buffer, offset, count);
-
-    #endregion
+		base.Dispose(true);
+	}
 }
