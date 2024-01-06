@@ -11,8 +11,8 @@ using static Storage.Utils.HashHelper;
 namespace Storage;
 
 [DebuggerDisplay("Client for '{Bucket}'")]
-[SuppressMessage("ReSharper", "SwitchStatementHandlesSomeKnownEnumValuesWithDefault")]
-[SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:Fields should be private")]
+[SuppressMessage("ReSharper", "SwitchStatementHandlesSomeKnownEnumValuesWithDefault", Justification = "Approved")]
+[SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:Fields should be private", Justification = "Approved")]
 public sealed class S3Client
 {
     internal const int DefaultPartSize = 5 * 1024 * 1024; // 5 Mb
@@ -20,11 +20,11 @@ public sealed class S3Client
     internal readonly string Bucket;
 
     private static readonly string[] _s3Headers = // trimmed, lower invariant, ordered
-    {
-        "host",
+    [
+	    "host",
         "x-amz-content-sha256",
         "x-amz-date",
-    };
+    ];
 
     private readonly string _bucket;
     private readonly string _endpoint;
@@ -300,7 +300,11 @@ public sealed class S3Client
 			return false;
 		}
 
-        var result = response is {IsSuccessStatusCode: true, StatusCode: HttpStatusCode.NoContent};
+        var result = response is
+        {
+	        IsSuccessStatusCode: true,
+	        StatusCode: HttpStatusCode.NoContent,
+        };
         response.Dispose();
 
         return result;

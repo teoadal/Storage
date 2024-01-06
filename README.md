@@ -12,35 +12,21 @@
 почти как у Minio, а памяти потребляю почти в 200 раз меньше, чем клиент для AWS. На Windows. На Alpine и Debian (если запустить бенчмарк в контейнере) результаты сильно скромнее - в 7 раз меньше памяти, чем клиент на AWS. Интересно, кстати, почему.
 
 ```ini
-BenchmarkDotNet = v0.13.5, OS=Windows 11 (10.0.22621.1265/22H2/2022Update/SunValley2)
-AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
-.NET SDK = 7.0.102
-           [Host]   : .NET 7.0.2 (7.0.222.60605), X64 RyuJIT AVX2 DEBUG
-           .NET 7.0 : .NET 7.0.2 (7.0.222.60605), X64 RyuJIT AVX2
+BenchmarkDotNet v0.13.12, Windows 11 (10.0.23606.1000)
+13th Gen Intel Core i9-13905H, 1 CPU, 20 logical and 14 physical cores
+.NET SDK 8.0.100
+[Host]   : .NET 8.0.0 (8.0.23.53103), X64 RyuJIT AVX2
+.NET 8.0 : .NET 8.0.0 (8.0.23.53103), X64 RyuJIT AVX2
 
-Job = .NET 7.0  Runtime=.NET 7.0
+Job=.NET 8.0  Runtime=.NET 8.0
 ```
 
-| Method  |    Mean | Ratio |       Gen0 |      Gen1 |    Allocated | Alloc Ratio |
-|---------|--------:|------:|-----------:|----------:|-------------:|------------:|
-| Aws     | 2.173 s |  1.73 | 25000.0000 | 8000.0000 | 207 341.8 KB |      252.99 |
-| Minio   | 1.365 s |  1.08 |          - |         - | 279 989.3 KB |      341.64 |
-| Storage | 1.282 s |  1.00 |          - |         - |     819.5 KB |        1.00 |
-```ini
-BenchmarkDotNet=v0.13.5, OS=macOS Ventura 13.4 (22F66) [Darwin 22.5.0]
-Apple M1 Pro, 1 CPU, 10 logical and 10 physical cores
-.NET SDK=7.0.304
-  [Host]   : .NET 7.0.7 (7.0.723.27404), Arm64 RyuJIT AdvSIMD
-  .NET 7.0 : .NET 7.0.7 (7.0.723.27404), Arm64 RyuJIT AdvSIMD
-
-Job=.NET 7.0  Runtime=.NET 7.0
-```
 | Method  |    Mean |    Error |   StdDev | Ratio | RatioSD |       Gen0 |      Gen1 |    Allocated | Alloc Ratio |
 |---------|--------:|---------:|---------:|------:|--------:|-----------:|----------:|-------------:|------------:|
-| Aws     | 2.320 s | 0.0444 s | 0.0416 s |  1.01 |    0.02 | 33000.0000 | 8000.0000 | 203327.85 KB |      298.69 |
-| Minio   | 2.457 s | 0.0476 s | 0.0585 s |  1.08 |    0.03 |          - |         - | 279825.76 KB |      411.06 |
-| Storage | 2.292 s | 0.0351 s | 0.0329 s |  1.00 |    0.00 |          - |         - |    680.74 KB |        1.00 |
-
+| Aws     | 2.458 s | 0.0491 s | 0.1002 s |  1.60 |    0.17 | 16000.0000 | 5000.0000 |  202247.9 KB |      308.06 |
+| Minio   | 1.729 s | 0.0329 s | 0.0737 s |  1.12 |    0.11 |          - |         - | 279651.64 KB |      425.96 |
+| Storage | 1.569 s | 0.0465 s | 0.1370 s |  1.00 |    0.00 |          - |         - |    656.52 KB |        1.00 |
+```ini
 
 ## Создание клиента
 

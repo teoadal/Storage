@@ -5,7 +5,7 @@ using Storage.Utils;
 
 namespace Storage.Benchmark.InternalBenchmarks;
 
-[SimpleJob(RuntimeMoniker.Net70)]
+[SimpleJob(RuntimeMoniker.Net80)]
 [MeanColumn]
 [MemoryDiagnoser]
 public class SignatureBenchmark

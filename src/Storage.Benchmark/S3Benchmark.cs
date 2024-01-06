@@ -5,11 +5,12 @@ using Amazon.S3.Util;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using Minio;
+using Minio.DataModel.Args;
 using Storage.Benchmark.Utils;
 
 namespace Storage.Benchmark;
 
-[SimpleJob(RuntimeMoniker.Net70)]
+[SimpleJob(RuntimeMoniker.Net80)]
 [MeanColumn]
 [MemoryDiagnoser]
 public class S3Benchmark
@@ -22,7 +23,7 @@ public class S3Benchmark
 
 	private IAmazonS3 _amazonClient = null!;
 	private TransferUtility _amazonTransfer = null!;
-	private MinioClient _minioClient = null!;
+	private IMinioClient _minioClient = null!;
 	private S3Client _s3Client = null!;
 
 	[GlobalSetup]

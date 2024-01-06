@@ -7,24 +7,14 @@ using System.Text;
 
 namespace Storage.Utils;
 
-internal sealed class Signature
+internal sealed class Signature(string secretKey, string region, string service)
 {
     public const string Iso8601DateTime = "yyyyMMddTHHmmssZ";
     public const string Iso8601Date = "yyyyMMdd";
 
     private static SortedDictionary<string, string>? _headerSort = new();
-    private readonly string _region;
-    private readonly byte[] _secretKey;
-    private readonly string _scope;
-    private readonly string _service;
-
-    public Signature(string secretKey, string region, string service)
-    {
-        _region = region;
-        _secretKey = Encoding.UTF8.GetBytes($"AWS4{secretKey}");
-        _scope = $"/{region}/{service}/aws4_request\n";
-        _service = service;
-    }
+    private readonly byte[] _secretKey = Encoding.UTF8.GetBytes($"AWS4{secretKey}");
+    private readonly string _scope = $"/{region}/{service}/aws4_request\n";
 
     public string Calculate(
         HttpRequestMessage request,
@@ -116,7 +106,7 @@ internal sealed class Signature
 		}
 
         var textLength = query.Length;
-        var equalIndex = query.IndexOf('=');
+        var equalIndex = query.IndexOf('=', StringComparison.Ordinal);
         if (equalIndex is -1)
 		{
 			equalIndex = textLength;
@@ -243,7 +233,7 @@ internal sealed class Signature
         canonical.Dispose();
     }
 
-    [SuppressMessage("ReSharper", "InvertIf")]
+    [SuppressMessage("ReSharper", "InvertIf", Justification = "Approved")]
     private static void AppendSha256ToHex(ref ValueStringBuilder builder, scoped ReadOnlySpan<char> value)
     {
         var count = Encoding.UTF8.GetByteCount(value);
@@ -288,7 +278,7 @@ internal sealed class Signature
         return string.Intern(builder.Flush());
     }
 
-    [SuppressMessage("ReSharper", "InvertIf")]
+    [SuppressMessage("ReSharper", "InvertIf", Justification = "Approved")]
     private static int Sign(ref Span<byte> buffer, ReadOnlySpan<byte> key, scoped ReadOnlySpan<char> content)
     {
         var count = Encoding.UTF8.GetByteCount(content);
@@ -334,8 +324,8 @@ internal sealed class Signature
 	    Span<char> dateBuffer = stackalloc char[16];
 
 	    Sign(ref buffer, _secretKey, dateBuffer[..StringUtils.Format(ref dateBuffer, requestDate, Iso8601Date)]);
-	    Sign(ref buffer, buffer, _region);
-	    Sign(ref buffer, buffer, _service);
+	    Sign(ref buffer, buffer, region);
+	    Sign(ref buffer, buffer, service);
 	    Sign(ref buffer, buffer, "aws4_request");
     }
 }

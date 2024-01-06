@@ -3,25 +3,16 @@ using System.Text;
 
 namespace Storage.Utils;
 
-internal readonly struct HttpHelper
+internal readonly struct HttpHelper(string accessKey, string region, string service, string[] signedHeaders)
 {
 	private static readonly HashSet<char> _validUrlCharacters =
 		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~".ToHashSet();
 
-	private readonly string _headerEnd;
-	private readonly string _headerStart;
+	private readonly string _headerEnd = $"/{region}/{service}/aws4_request, SignedHeaders={string.Join(';', signedHeaders)}, Signature=";
+	private readonly string _headerStart = $"AWS4-HMAC-SHA256 Credential={accessKey}/";
 
-	private readonly string _urlMiddle;
-	private readonly string _urlStart;
-
-	public HttpHelper(string accessKey, string region, string service, string[] signedHeaders)
-	{
-		_headerStart = $"AWS4-HMAC-SHA256 Credential={accessKey}/";
-		_headerEnd = $"/{region}/{service}/aws4_request, SignedHeaders={string.Join(';', signedHeaders)}, Signature=";
-
-		_urlStart = $"?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential={accessKey}%2F";
-		_urlMiddle = $"%2F{region}%2F{service}%2Faws4_request";
-	}
+	private readonly string _urlMiddle = $"%2F{region}%2F{service}%2Faws4_request";
+	private readonly string _urlStart = $"?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential={accessKey}%2F";
 
 	public static bool AppendEncodedName(scoped ref ValueStringBuilder builder, ReadOnlySpan<char> name)
 	{
