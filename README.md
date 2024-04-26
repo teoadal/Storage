@@ -12,20 +12,19 @@
 почти как у Minio, а памяти потребляю почти в 200 раз меньше, чем клиент для AWS. На Windows. На Alpine и Debian (если запустить бенчмарк в контейнере) результаты сильно скромнее - в 7 раз меньше памяти, чем клиент на AWS. Интересно, кстати, почему.
 
 ```ini
-BenchmarkDotNet = v0.13.5, OS=Windows 11 (10.0.22621.1265/22H2/2022Update/SunValley2)
-AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
-.NET SDK = 7.0.102
-           [Host]   : .NET 7.0.2 (7.0.222.60605), X64 RyuJIT AVX2 DEBUG
-           .NET 7.0 : .NET 7.0.2 (7.0.222.60605), X64 RyuJIT AVX2
+BenchmarkDotNet v0.13.12, Windows 11 (10.0.23606.1000)
+13th Gen Intel Core i9-13905H, 1 CPU, 20 logical and 14 physical cores
+.NET SDK 8.0.100
+.NET 8.0 : .NET 8.0.0 (8.0.23.53103), X64 RyuJIT AVX2
 
-Job = .NET 7.0  Runtime=.NET 7.0 
+Job=.NET 8.0  Runtime=.NET 8.0
 ```
 
-| Method  |    Mean | Ratio |       Gen0 |      Gen1 |    Allocated | Alloc Ratio |
-|---------|--------:|------:|-----------:|----------:|-------------:|------------:|
-| Aws     | 2.173 s |  1.73 | 25000.0000 | 8000.0000 | 207 341.8 KB |      252.99 |
-| Minio   | 1.365 s |  1.08 |          - |         - | 279 989.3 KB |      341.64 |
-| Storage | 1.282 s |  1.00 |          - |         - |     819.5 KB |        1.00 |
+| Method  |    Mean |    Error |   StdDev | Ratio | RatioSD |       Gen0 |      Gen1 |    Allocated | Alloc Ratio |
+|---------|--------:|---------:|---------:|------:|--------:|-----------:|----------:|-------------:|------------:|
+| Aws     | 2.458 s | 0.0491 s | 0.1002 s |  1.60 |    0.17 | 16000.0000 | 5000.0000 |  202247.9 KB |      308.06 |
+| Minio   | 1.729 s | 0.0329 s | 0.0737 s |  1.12 |    0.11 |          - |         - | 279651.64 KB |      425.96 |
+| Storage | 1.569 s | 0.0465 s | 0.1370 s |  1.00 |    0.00 |          - |         - |    656.52 KB |        1.00 |
 
 ## Создание клиента
 
@@ -36,7 +35,7 @@ var storageClient = new S3Client(new S3Settings
 {
     AccessKey = "ROOTUSER",
     Bucket = "mybucket",
-    EndPoint = "localhost",     // для Yandex.Objects это "storage.yandexcloud.net" 
+    EndPoint = "localhost",     // для Yandex.Objects это "storage.yandexcloud.net"
     Port = 9000,                // стандартный порт Minio - 9000, для Yandex.Objects указывать не нужно
     SecretKey = "ChangeMe123",
     UseHttps = false,           // для Yandex.Objects укажите true
@@ -56,7 +55,7 @@ Amazon S3 не тестировался.
 
 ```csharp
 bool bucketCreateResult = await storageClient.CreateBucket(cancellationToken);
-Console.WriteLine(bucketCreateResult 
+Console.WriteLine(bucketCreateResult
     ? "Bucket создан"
     : $"Bucket не был создан");
 ```
@@ -106,7 +105,7 @@ if (!await upload.Upload(byteArray, cancellationToken)) { // загружаем 
     await upload.Abort(cancellationToken); // отменяем загрузку
 }
 else {
-    await upload.Complete(cancellationToken); // завершаем загрузку    
+    await upload.Complete(cancellationToken); // завершаем загрузку
 }
 
 ```

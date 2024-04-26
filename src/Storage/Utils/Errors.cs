@@ -5,9 +5,10 @@ namespace Storage.Utils;
 internal static class Errors
 {
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void CantFormatToString<T>(T value) where T : struct
+    public static void CantFormatToString<T>(T value)
+	    where T : struct
     {
-        throw new Exception($"Can't format '{value}' to string");
+        throw new FormatException($"Can't format '{value}' to string");
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -15,13 +16,12 @@ internal static class Errors
     {
         throw new ObjectDisposedException(nameof(S3Client));
     }
-    
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void UnexpectedResult(HttpResponseMessage response)
     {
         var reason = response.ReasonPhrase ?? response.ToString();
-        var exception = new HttpRequestException("Storage has returned an unexpected result: " +
-                                                 $"{response.StatusCode} ({reason})");
+        var exception = new HttpRequestException($"Storage has returned an unexpected result: {response.StatusCode} ({reason})");
 
         response.Dispose();
 

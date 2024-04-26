@@ -18,7 +18,8 @@ internal static class StreamUtils
 
             length -= written;
             offset += written;
-        } while (written > 0 && length > 0);
+        }
+        while (written > 0 && length > 0);
 
         return offset;
     }
