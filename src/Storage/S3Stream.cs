@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-
-namespace Storage;
+﻿namespace Storage;
 
 internal sealed class S3Stream(HttpResponseMessage response, Stream stream) : Stream
 {

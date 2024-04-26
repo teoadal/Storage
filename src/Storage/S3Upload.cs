@@ -1,5 +1,4 @@
 ﻿using System.Buffers;
-using System.Runtime.CompilerServices;
 using Storage.Utils;
 
 namespace Storage;
@@ -8,8 +7,6 @@ public sealed class S3Upload : IDisposable
 {
 	private readonly S3Client _client;
 	private readonly string _encodedFileName;
-	private readonly string _fileName;
-	private readonly string _uploadId;
 
 	private byte[]? _byteBuffer;
 	private bool _disposed;
@@ -18,12 +15,25 @@ public sealed class S3Upload : IDisposable
 
 	internal S3Upload(S3Client client, string fileName, string encodedFileName, string uploadId)
 	{
-		_fileName = fileName;
-		_uploadId = uploadId;
+		FileName = fileName;
+		UploadId = uploadId;
 
 		_client = client;
 		_encodedFileName = encodedFileName;
+
 		_parts = ArrayPool<string>.Shared.Rent(16);
+	}
+
+	public string FileName
+	{
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		get;
+	}
+
+	public string UploadId
+	{
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		get;
 	}
 
 	public long Written
@@ -56,14 +66,14 @@ public sealed class S3Upload : IDisposable
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public Task Abort(CancellationToken cancellation)
 	{
-		return _client.MultipartAbort(_encodedFileName, _uploadId, cancellation);
+		return _client.MultipartAbort(_encodedFileName, UploadId, cancellation);
 	}
 
 	public Task<bool> Complete(CancellationToken cancellation)
 	{
 		return _partCount == 0
 			? Task.FromResult(false)
-			: _client.MultipartComplete(_encodedFileName, _uploadId, _parts, _partCount, cancellation);
+			: _client.MultipartComplete(_encodedFileName, UploadId, _parts, _partCount, cancellation);
 	}
 
 	public Task<bool> Upload(Stream data, CancellationToken cancellation)
@@ -100,7 +110,7 @@ public sealed class S3Upload : IDisposable
 	public async Task<bool> Upload(byte[] data, int length, CancellationToken token)
 	{
 		var partId = await _client.MultipartUpload(
-			_encodedFileName, _uploadId, _partCount + 1, data, length, token);
+			_encodedFileName, UploadId, _partCount + 1, data, length, token);
 
 		if (string.IsNullOrEmpty(partId))
 		{

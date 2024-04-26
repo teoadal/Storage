@@ -26,7 +26,7 @@ internal static class BenchmarkHelper
 			});
 	}
 
-	public static MinioClient CreateMinioClient(S3Settings settings)
+	public static IMinioClient CreateMinioClient(S3Settings settings)
 	{
 		var builder = new MinioClient();
 		var port = settings.Port;

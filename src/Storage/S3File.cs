@@ -1,9 +1,4 @@
-﻿using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Net;
-using System.Runtime.CompilerServices;
-
-namespace Storage;
+﻿namespace Storage;
 
 /// <summary>
 ///     Wrapper around <see cref="HttpResponseMessage" /> with a data of a file from storage

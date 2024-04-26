@@ -1,6 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-
-namespace Storage.Utils;
+﻿namespace Storage.Utils;
 
 internal static class Errors
 {
