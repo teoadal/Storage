@@ -2,7 +2,7 @@
 
 public sealed class BucketShould(StorageFixture fixture) : IClassFixture<StorageFixture>
 {
-	private readonly CancellationToken _cancellation = CancellationToken.None;
+	private readonly CancellationToken _ct = CancellationToken.None;
 	private readonly S3Client _client = fixture.S3Client;
 
 	[Fact]
@@ -11,7 +11,7 @@ public sealed class BucketShould(StorageFixture fixture) : IClassFixture<Storage
 		// don't dispose it
 		var client = TestHelper.CloneClient(fixture);
 
-		var bucketCreateResult = await client.CreateBucket(_cancellation);
+		var bucketCreateResult = await client.CreateBucket(_ct);
 
 		bucketCreateResult
 			.Should().BeTrue();
@@ -22,7 +22,7 @@ public sealed class BucketShould(StorageFixture fixture) : IClassFixture<Storage
 	[Fact]
 	public async Task BeExists()
 	{
-		var bucketExistsResult = await _client.IsBucketExists(_cancellation);
+		var bucketExistsResult = await _client.IsBucketExists(_ct);
 
 		bucketExistsResult
 			.Should().BeTrue();
@@ -34,7 +34,7 @@ public sealed class BucketShould(StorageFixture fixture) : IClassFixture<Storage
 		// don't dispose it
 		var client = TestHelper.CloneClient(fixture);
 
-		var bucketExistsResult = await client.IsBucketExists(_cancellation);
+		var bucketExistsResult = await client.IsBucketExists(_ct);
 
 		bucketExistsResult
 			.Should().BeFalse();
@@ -44,7 +44,7 @@ public sealed class BucketShould(StorageFixture fixture) : IClassFixture<Storage
 	public Task NotThrowIfCreateBucketAlreadyExists()
 	{
 		return _client
-			.Invoking(client => client.CreateBucket(_cancellation))
+			.Invoking(client => client.CreateBucket(_ct))
 			.Should().NotThrowAsync();
 	}
 
@@ -55,13 +55,13 @@ public sealed class BucketShould(StorageFixture fixture) : IClassFixture<Storage
 		var client = TestHelper.CloneClient(fixture);
 
 		return client
-			.Invoking(c => c.DeleteBucket(_cancellation))
+			.Invoking(c => c.DeleteBucket(_ct))
 			.Should().NotThrowAsync();
 	}
 
 	private async Task DeleteTestBucket(S3Client client)
 	{
-		var bucketDeleteResult = await client.DeleteBucket(_cancellation);
+		var bucketDeleteResult = await client.DeleteBucket(_ct);
 
 		bucketDeleteResult
 			.Should().BeTrue();

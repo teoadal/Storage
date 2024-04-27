@@ -2,7 +2,7 @@
 
 public sealed class ClientShould(StorageFixture fixture) : IClassFixture<StorageFixture>
 {
-	private readonly CancellationToken _cancellation = CancellationToken.None;
+	private readonly CancellationToken _ct = CancellationToken.None;
 	private readonly S3Client _client = fixture.S3Client;
 
 	[Fact]
@@ -32,7 +32,7 @@ public sealed class ClientShould(StorageFixture fixture) : IClassFixture<Storage
 		client.Dispose();
 
 		return client
-			.Invoking(c => c.CreateBucket(_cancellation))
+			.Invoking(c => c.CreateBucket(_ct))
 			.Should().ThrowExactlyAsync<ObjectDisposedException>();
 	}
 }

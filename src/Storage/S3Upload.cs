@@ -63,6 +63,11 @@ public sealed class S3Upload : IDisposable
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public Task<bool> Abort(CancellationToken ct)
 	{
+		if (_disposed)
+		{
+			Errors.Disposed();
+		}
+
 		return _client.MultipartAbort(_encodedFileName, UploadId, ct);
 	}
 
@@ -174,6 +179,11 @@ public sealed class S3Upload : IDisposable
 	/// <returns>Возвращает результат завершения загрузки</returns>
 	public Task<bool> Complete(CancellationToken ct)
 	{
+		if (_disposed)
+		{
+			Errors.Disposed();
+		}
+
 		return _partCount == 0
 			? Task.FromResult(false)
 			: _client.MultipartComplete(_encodedFileName, UploadId, _parts, _partCount, ct);

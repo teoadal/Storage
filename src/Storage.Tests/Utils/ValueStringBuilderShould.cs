@@ -18,4 +18,23 @@ public class ValueStringBuilderShould
 
 		builder.Length.Should().Be(stringLength);
 	}
+
+	[Fact]
+	public void NotCreateEmptyString()
+	{
+		var builder = new ValueStringBuilder(stackalloc char[64]);
+		builder
+			.ToString()
+			.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void RemoveLastCorrectly()
+	{
+		var builder = new ValueStringBuilder(stackalloc char[64]);
+		builder.RemoveLast();
+
+		builder.Length
+			.Should().BeGreaterThan(-1);
+	}
 }

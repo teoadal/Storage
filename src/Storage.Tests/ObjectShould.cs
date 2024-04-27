@@ -195,6 +195,35 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 	}
 
 	[Fact]
+	public async Task HasValidUploadInformation()
+	{
+		var fileName = _fixture.Create<string>();
+
+		using var uploader = await _client.UploadFile(fileName, StreamContentType, _ct);
+
+		uploader
+			.FileName
+			.Should().Be(fileName);
+
+		uploader
+			.UploadId
+			.Should().NotBeEmpty();
+
+		uploader
+			.Written
+			.Should().Be(0);
+
+		var partData = new byte[] { 1, 2, 3 };
+		await uploader.AddPart(partData, _ct);
+
+		uploader
+			.Written
+			.Should().Be(partData.Length);
+
+		await uploader.Abort(_ct);
+	}
+
+	[Fact]
 	public async Task HasValidInformation()
 	{
 		const int length = 1 * 1024 * 1024;
@@ -335,6 +364,30 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 	}
 
 	[Fact]
+	public async Task ReadFileStream()
+	{
+		var fileName = await CreateTestFile();
+
+		var buffer = new byte[1024];
+		var file = await _client.GetFile(fileName, _ct);
+		var fileStream = await file.GetStream(_ct);
+
+#pragma warning disable CA1835
+		var read = await fileStream.ReadAsync(buffer, _ct);
+		read.Should().BeGreaterThan(0);
+
+		read = await fileStream.ReadAsync(buffer, 10, 20, _ct);
+		read.Should().BeGreaterThan(0);
+
+		// ReSharper disable once MethodHasAsyncOverloadWithCancellation
+		read = fileStream.Read(buffer, 10, 20);
+		read.Should().BeGreaterThan(0);
+#pragma warning restore CA1835
+
+		await DeleteTestFile(fileName);
+	}
+
+	[Fact]
 	public async Task Upload()
 	{
 		var fileName = _fixture.Create<string>();
@@ -426,6 +479,15 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 	}
 
 	[Fact]
+	public async Task NotThrowIfGetFileStreamNotFound()
+	{
+		var fileName = _fixture.Create<string>();
+		await _client
+			.Invoking(client => client.GetFileStream(fileName, _ct))
+			.Should().NotThrowAsync();
+	}
+
+	[Fact]
 	public async Task ThrowIfBucketNotExists()
 	{
 		var fileArray = GetByteArray();
@@ -443,6 +505,27 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 		await _notExistsBucketClient
 			.Invoking(client => client.UploadFile(fileName, StreamContentType, fileArray, _ct))
 			.Should().ThrowAsync<HttpRequestException>();
+	}
+
+	[Fact]
+	public async Task ThrowIfUploadDisposed()
+	{
+		var fileName = _fixture.Create<string>();
+
+		var uploader = await _client.UploadFile(fileName, StreamContentType, _ct);
+		uploader.Dispose();
+
+		await uploader
+			.Invoking(u => u.Abort(_ct))
+			.Should().ThrowExactlyAsync<ObjectDisposedException>();
+
+		await uploader
+			.Invoking(u => u.AddPart([], 0, _ct))
+			.Should().ThrowExactlyAsync<ObjectDisposedException>();
+
+		await uploader
+			.Invoking(u => u.Complete(_ct))
+			.Should().ThrowExactlyAsync<ObjectDisposedException>();
 	}
 
 	private async Task<string> CreateTestFile(
