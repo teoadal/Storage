@@ -1,9 +1,8 @@
-﻿using Storage.Tests.Utils;
-
-namespace Storage.Tests;
+﻿namespace Storage.Tests;
 
 public sealed class ClientShould(StorageFixture fixture) : IClassFixture<StorageFixture>
 {
+	private readonly CancellationToken _cancellation = CancellationToken.None;
 	private readonly S3Client _client = fixture.S3Client;
 
 	[Fact]
@@ -23,5 +22,17 @@ public sealed class ClientShould(StorageFixture fixture) : IClassFixture<Storage
 		_client
 			.Bucket
 			.Should().Be(fixture.Settings.Bucket);
+	}
+
+	[Fact]
+	public Task ThrowIfDisposed()
+	{
+		var client = TestHelper.CloneClient(fixture, null, new HttpClient());
+
+		client.Dispose();
+
+		return client
+			.Invoking(c => c.CreateBucket(_cancellation))
+			.Should().ThrowExactlyAsync<ObjectDisposedException>();
 	}
 }

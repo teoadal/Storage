@@ -2,13 +2,29 @@ using System.Globalization;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 
-namespace Storage.Tests.Utils;
+namespace Storage.Tests;
 
 public static class TestHelper
 {
 	public const int MinioInternalPort = 9000;
 	public const string SecretKey = "ChangeMe123";
 	public const string Username = "ROOTUSER";
+
+	public static S3Client CloneClient(StorageFixture fixture, string? bucket = null,  HttpClient? client = null)
+	{
+		var settings = fixture.Settings;
+		var clonedSettings = new S3Settings
+		{
+			AccessKey = settings.AccessKey,
+			Bucket = bucket ?? fixture.Create<string>(),
+			EndPoint = settings.EndPoint,
+			Port = settings.Port,
+			SecretKey = settings.SecretKey,
+			UseHttps = settings.UseHttps,
+		};
+
+		return new S3Client(clonedSettings, client ?? fixture.HttpClient);
+	}
 
 	public static S3Settings CreateSettings(IContainer? container = null)
 	{

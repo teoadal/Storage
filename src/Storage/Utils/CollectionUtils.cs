@@ -2,7 +2,7 @@
 
 namespace Storage.Utils;
 
-public static class CollectionUtils
+internal static class CollectionUtils
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Resize<T>(ref T[] array, ArrayPool<T> pool, int newLength, bool clear = false)

@@ -1,6 +1,5 @@
 ﻿using System.Net;
-using Storage.Tests.Utils;
-using static Storage.Tests.Utils.StorageFixture;
+using static Storage.Tests.StorageFixture;
 
 namespace Storage.Tests;
 
@@ -17,18 +16,7 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 		_client = fixture.S3Client;
 		_fixture = fixture;
 
-		var settings = _fixture.Settings;
-		_notExistsBucketClient = new S3Client(
-			new S3Settings
-			{
-				AccessKey = settings.AccessKey,
-				Bucket = _fixture.Create<string>(),
-				EndPoint = settings.EndPoint,
-				Port = settings.Port,
-				SecretKey = settings.SecretKey,
-				UseHttps = settings.UseHttps,
-			},
-			_fixture.HttpClient);
+		_notExistsBucketClient = TestHelper.CloneClient(_fixture);
 	}
 
 	[Fact]
@@ -44,16 +32,16 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 			var fileName = $"{file}-{i}";
 			tasks[i] = Task.Run(
 				async () =>
-			{
-				await _client.UploadFile(fileName, StreamContentType, fileData, _ct);
-				if (!await _client.IsFileExists(fileName, _ct))
 				{
-					return false;
-				}
+					await _client.UploadFile(fileName, StreamContentType, fileData, _ct);
+					if (!await _client.IsFileExists(fileName, _ct))
+					{
+						return false;
+					}
 
-				await _client.DeleteFile(fileName, _ct);
-				return true;
-			},
+					await _client.DeleteFile(fileName, _ct);
+					return true;
+				},
 				_ct);
 		}
 

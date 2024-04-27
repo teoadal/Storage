@@ -32,6 +32,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Storage.Benchmark" />
+		<InternalsVisibleTo Include="Storage.Tests" />
     </ItemGroup>
 
     <ItemGroup>

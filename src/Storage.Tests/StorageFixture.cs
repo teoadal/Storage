@@ -1,7 +1,7 @@
 ﻿using AutoFixture;
 using DotNet.Testcontainers.Containers;
 
-namespace Storage.Tests.Utils;
+namespace Storage.Tests;
 
 public sealed class StorageFixture : IDisposable, IAsyncDisposable
 {

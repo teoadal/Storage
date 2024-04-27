@@ -1,6 +1,4 @@
-﻿using Storage.Tests.Utils;
-
-namespace Storage.Tests;
+﻿namespace Storage.Tests;
 
 public sealed class BucketShould(StorageFixture fixture) : IClassFixture<StorageFixture>
 {
@@ -10,21 +8,8 @@ public sealed class BucketShould(StorageFixture fixture) : IClassFixture<Storage
 	[Fact]
 	public async Task CreateBucket()
 	{
-		var settings = fixture.Settings;
-
-		// don't use using here
-		var client =
-			new S3Client(
-				new S3Settings
-				{
-					AccessKey = settings.AccessKey,
-					Bucket = fixture.Create<string>(),
-					EndPoint = settings.EndPoint,
-					Port = settings.Port,
-					SecretKey = settings.SecretKey,
-					UseHttps = settings.UseHttps,
-				},
-				fixture.HttpClient);
+		// don't dispose it
+		var client = TestHelper.CloneClient(fixture);
 
 		var bucketCreateResult = await client.CreateBucket(_cancellation);
 
@@ -46,21 +31,8 @@ public sealed class BucketShould(StorageFixture fixture) : IClassFixture<Storage
 	[Fact]
 	public async Task BeNotExists()
 	{
-		var settings = fixture.Settings;
-
 		// don't dispose it
-		var client =
-			new S3Client(
-				new S3Settings
-				{
-					AccessKey = settings.AccessKey,
-					Bucket = fixture.Create<string>(),
-					EndPoint = settings.EndPoint,
-					Port = settings.Port,
-					SecretKey = settings.SecretKey,
-					UseHttps = settings.UseHttps,
-				},
-				fixture.HttpClient);
+		var client = TestHelper.CloneClient(fixture);
 
 		var bucketExistsResult = await client.IsBucketExists(_cancellation);
 
@@ -79,21 +51,8 @@ public sealed class BucketShould(StorageFixture fixture) : IClassFixture<Storage
 	[Fact]
 	public Task NotThrowIfDeleteNotExistsBucket()
 	{
-		var settings = fixture.Settings;
-
-		// don't use using here
-		var client =
-			new S3Client(
-				new S3Settings
-				{
-					AccessKey = settings.AccessKey,
-					Bucket = fixture.Create<string>(),
-					EndPoint = settings.EndPoint,
-					Port = settings.Port,
-					SecretKey = settings.SecretKey,
-					UseHttps = settings.UseHttps,
-				},
-				fixture.HttpClient);
+		// don't dispose it
+		var client = TestHelper.CloneClient(fixture);
 
 		return client
 			.Invoking(c => c.DeleteBucket(_cancellation))
