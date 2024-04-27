@@ -20,6 +20,23 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 	}
 
 	[Fact]
+	public async Task AbortMultipart()
+	{
+		var fileName = _fixture.Create<string>();
+		var data = GetByteArray(50 * 1024 * 1024);
+
+		using var uploader = await _client.UploadFile(fileName, StreamContentType, _ct);
+
+		var addResult = await uploader.AddPart(data, _ct);
+		addResult
+			.Should().BeTrue();
+
+		var abortResult = await uploader.Abort(_ct);
+		abortResult
+			.Should().BeTrue();
+	}
+
+	[Fact]
 	public async Task AllowParallelUploadMultipleFiles()
 	{
 		const int parallelization = 10;
@@ -121,9 +138,23 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 		var fileName = await CreateTestFile();
 		using var fileGetResult = await _client.GetFile(fileName, _ct);
 
-		// ReSharper disable once MethodHasAsyncOverload
+		// ReSharper disable once DisposeOnUsingVariable
 		fileGetResult.Dispose();
 
+		await DeleteTestFile(fileName);
+	}
+
+	[Fact]
+	public async Task GetFileStream()
+	{
+		var fileName = await CreateTestFile();
+
+		var fileStream = await _client.GetFileStream(fileName, _ct);
+
+		using var bufferStream = GetEmptyByteStream();
+		await fileStream.CopyToAsync(bufferStream, _ct);
+
+		await EnsureFileSame(fileName, bufferStream.ToArray());
 		await DeleteTestFile(fileName);
 	}
 
@@ -262,10 +293,38 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 	}
 
 	[Fact]
+	public async Task PutBigByteArray()
+	{
+		var fileName = _fixture.Create<string>();
+		var data = GetByteArray(50 * 1024 * 1024);
+		var filePutResult = await _client.UploadFile(fileName, StreamContentType, data, _ct);
+
+		filePutResult
+			.Should().BeTrue();
+
+		await EnsureFileSame(fileName, data);
+		await DeleteTestFile(fileName);
+	}
+
+	[Fact]
 	public async Task PutStream()
 	{
 		var fileName = _fixture.Create<string>();
 		var data = GetByteStream(15000);
+		var filePutResult = await _client.UploadFile(fileName, StreamContentType, data, _ct);
+
+		filePutResult
+			.Should().BeTrue();
+
+		await EnsureFileSame(fileName, data);
+		await DeleteTestFile(fileName);
+	}
+
+	[Fact]
+	public async Task PutBigStream()
+	{
+		var fileName = _fixture.Create<string>();
+		var data = GetByteStream(50 * 1024 * 1024);
 		var filePutResult = await _client.UploadFile(fileName, StreamContentType, data, _ct);
 
 		filePutResult

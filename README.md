@@ -8,7 +8,7 @@
 
 Привет! Это обертка над HttpClient для работы с S3 хранилищами. Мотивация создания была простейшей - я не понимал,
 почему клиенты [AWS](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html)
-и [Minio](https://github.com/minio/minio-dotnet) едят так много памяти . Результат моих экспериментов: скорость
+и [Minio](https://github.com/minio/minio-dotnet) едят так много памяти. Результат моих экспериментов: скорость
 почти как у Minio, а памяти потребляю почти в 200 раз меньше, чем клиент для AWS.
 
 ```ini
@@ -18,13 +18,13 @@ Unknown processor
 [Host]   : .NET 8.0.4 (8.0.424.16909), Arm64 RyuJIT AdvSIMD
 .NET 8.0 : .NET 8.0.4 (8.0.424.16909), Arm64 RyuJIT AdvSIMD
 
-Job=.NET 8.0  Runtime=.NET 8.0  
+Job=.NET 8.0  Runtime=.NET 8.0
 ```
-| Method  | Mean    | Error    | StdDev   | Ratio | RatioSD | Gen0       | Gen1      | Allocated    | Alloc Ratio |
-|-------- |--------:|---------:|---------:|------:|--------:|-----------:|----------:|-------------:|------------:|
-| Aws     | 1.51 s | 0.030 s | 0.035 s |  1.42 |    0.03 | 80000.00 | 5000.00 | 201710 KB |      420.92 |
-| Minio   | 1.48 s | 0.027 s | 0.023 s |  1.39 |    0.02 |          - |         - | 279524 KB |      583.30 |
-| Storage | 1.06 s | 0.014 s | 0.013 s |  1.00 |    0.00 |          - |         - |    479 KB |        1.00 |
+| Method  | Mean    | Ratio |        Gen0 |       Gen1 |     Allocated | Alloc Ratio |
+|-------- |--------:|------:|------------:|-----------:|--------------:|------------:|
+| Aws     | 1.497 s |  1.45 |      80 000 |      6 000 | 201 728.07 KB |      333.24 |
+| Minio   | 1.468 s |  1.43 |           - |          - | 279 532.97 KB |      461.76 |
+| Storage | 1.031 s |  1.00 |           - |          - |     605.36 KB |        1.00 |
 
 ## Создание клиента
 
@@ -57,7 +57,7 @@ Amazon S3 не тестировался.
 bool bucketCreateResult = await storageClient.CreateBucket(cancellationToken);
 Console.WriteLine(bucketCreateResult
     ? "Bucket создан"
-    : $"Bucket не был создан");
+    : "Bucket не был создан");
 ```
 
 ### Проверка существования bucket'a
@@ -100,8 +100,8 @@ if (fileUploadResult) Console.WriteLine("Файл загружен");
 
 using S3Upload upload = await storageClient.UploadFile(fileName, fileType, cancellationToken);
 
-await upload.Upload(stream, cancellationToken); // загружаем часть документа
-if (!await upload.Upload(byteArray, cancellationToken)) { // загружаем другую часть документа
+await upload.AddParts(stream, cancellationToken); // загружаем части документа
+if (!await upload.AddParts(byteArray, cancellationToken)) { // загружаем другую часть документа
     await upload.Abort(cancellationToken); // отменяем загрузку
 }
 else {
@@ -125,11 +125,21 @@ else {
 }
 ```
 
+### Получение файла как Stream
+
+```csharp
+var fileStream = await storageClient.GetFileStream(fileName, cancellationToken);
+```
+
+В случае, если файл не существует, возвратится `Stream.Null`.
+
 ### Проверка существования файла
 
 ```csharp
 bool fileExistsResult = await storageClient.IsFileExists(fileName, cancellationToken);
-if (fileExistsResult) Console.WriteLine("Файл существует");
+if (fileExistsResult) {
+	Console.WriteLine("Файл существует");
+}
 ```
 
 ### Создание подписанной ссылки на файл
@@ -139,7 +149,9 @@ if (fileExistsResult) Console.WriteLine("Файл существует");
 
 ```csharp
 string? preSignedFileUrl = storageClient.GetFileUrl(fileName, expiration);
-if (preSignedFileUrl != null) Console.WriteLine($"URL получен: {preSignedFileUrl}");
+if (preSignedFileUrl != null) {
+	Console.WriteLine($"URL получен: {preSignedFileUrl}");
+}
 ```
 
 Существует не безопасный способ создать ссылку, без проверки наличия файла в S3.

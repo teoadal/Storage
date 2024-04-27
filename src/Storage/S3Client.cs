@@ -1,15 +1,16 @@
 ﻿using System.Buffers;
-using System.Globalization;
-using System.Text;
 using Storage.Utils;
 using static Storage.Utils.HashHelper;
 
 namespace Storage;
 
+/// <summary>
+/// Клиент для загрузки данных в S3 и их получения
+/// </summary>
 [DebuggerDisplay("Client for '{Bucket}'")]
 [SuppressMessage("ReSharper", "SwitchStatementHandlesSomeKnownEnumValuesWithDefault", Justification = "Approved")]
 [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:Fields should be private", Justification = "Approved")]
-public sealed class S3Client
+public sealed partial class S3Client
 {
 	internal const int DefaultPartSize = 5 * 1024 * 1024; // 5 Mb
 
@@ -24,7 +25,7 @@ public sealed class S3Client
 
 	private readonly string _bucket;
 	private readonly string _endpoint;
-	private readonly HttpHelper _http;
+	private readonly HttpDescription _http;
 	private readonly HttpClient _client;
 	private readonly Signature _signature;
 	private readonly bool _useHttp2;
@@ -42,11 +43,17 @@ public sealed class S3Client
 		_bucket = $"{scheme}://{settings.EndPoint}{port}/{bucket}";
 		_client = client ?? new HttpClient();
 		_endpoint = $"{settings.EndPoint}{port}";
-		_http = new HttpHelper(settings.AccessKey, settings.Region, settings.Service, _s3Headers);
+		_http = new HttpDescription(settings.AccessKey, settings.Region, settings.Service, _s3Headers);
 		_signature = new Signature(settings.SecretKey, settings.Region, settings.Service);
 		_useHttp2 = settings.UseHttp2;
 	}
 
+	/// <summary>
+	/// Создаёт подписанную ссылку на файл без проверки наличия файла на сервере
+	/// </summary>
+	/// <param name="fileName">Название файла</param>
+	/// <param name="expiration">Время жизни ссылки</param>
+	/// <returns>Возвращает подписанную ссылку на файл</returns>
 	public string BuildFileUrl(string fileName, TimeSpan expiration)
 	{
 		var now = DateTime.UtcNow;
@@ -56,56 +63,12 @@ public sealed class S3Client
 		return $"{url}&X-Amz-Signature={signature}";
 	}
 
-	public async Task<bool> CreateBucket(CancellationToken cancellation)
-	{
-		HttpResponseMessage response;
-		using (var request = CreateRequest(HttpMethod.Put))
-		{
-			response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
-		}
-
-		switch (response.StatusCode)
-		{
-			case HttpStatusCode.OK:
-				response.Dispose();
-				return true;
-			case HttpStatusCode.Conflict: // already exists
-				response.Dispose();
-				return false;
-			default:
-				Errors.UnexpectedResult(response);
-				return false;
-		}
-	}
-
-	public async Task<bool> DeleteBucket(CancellationToken cancellation)
-	{
-		HttpResponseMessage response;
-		using (var request = CreateRequest(HttpMethod.Delete))
-		{
-			response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
-		}
-
-		switch (response.StatusCode)
-		{
-			case HttpStatusCode.NoContent:
-				response.Dispose();
-				return true;
-			case HttpStatusCode.NotFound:
-				response.Dispose();
-				return false;
-			default:
-				Errors.UnexpectedResult(response);
-				return false;
-		}
-	}
-
-	public async Task DeleteFile(string fileName, CancellationToken cancellation)
+	public async Task DeleteFile(string fileName, CancellationToken ct)
 	{
 		HttpResponseMessage response;
 		using (var request = CreateRequest(HttpMethod.Delete, fileName))
 		{
-			response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
+			response = await Send(request, EmptyPayloadHash, ct).ConfigureAwait(false);
 		}
 
 		if (response.StatusCode is not HttpStatusCode.NoContent)
@@ -128,12 +91,18 @@ public sealed class S3Client
 		_disposed = true;
 	}
 
-	public async Task<S3File> GetFile(string fileName, CancellationToken cancellation)
+	/// <summary>
+	/// Получает объектное представление файла на сервере
+	/// </summary>
+	/// <param name="fileName">Название файла</param>
+	/// <param name="ct">Токен отмены операции</param>
+	/// <returns>Возвращает объектное представление файла на сервере</returns>
+	public async Task<S3File> GetFile(string fileName, CancellationToken ct)
 	{
 		HttpResponseMessage response;
 		using (var request = CreateRequest(HttpMethod.Get, fileName))
 		{
-			response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
+			response = await Send(request, EmptyPayloadHash, ct).ConfigureAwait(false);
 		}
 
 		switch (response.StatusCode)
@@ -149,18 +118,18 @@ public sealed class S3Client
 		}
 	}
 
-	public async Task<Stream> GetFileStream(string fileName, CancellationToken cancellation)
+	public async Task<Stream> GetFileStream(string fileName, CancellationToken ct)
 	{
 		HttpResponseMessage response;
 		using (var request = CreateRequest(HttpMethod.Get, fileName))
 		{
-			response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
+			response = await Send(request, EmptyPayloadHash, ct).ConfigureAwait(false);
 		}
 
 		switch (response.StatusCode)
 		{
 			case HttpStatusCode.OK:
-				return await response.Content.ReadAsStreamAsync(cancellation).ConfigureAwait(false);
+				return await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
 			case HttpStatusCode.NotFound:
 				response.Dispose();
 				return Stream.Null;
@@ -170,41 +139,26 @@ public sealed class S3Client
 		}
 	}
 
-	public async Task<string?> GetFileUrl(string fileName, TimeSpan expiration, CancellationToken cancellation)
+	/// <summary>
+	/// Создаёт подписанную ссылку на файл после проверки наличия файла на сервере
+	/// </summary>
+	/// <param name="fileName">Название файла</param>
+	/// <param name="expiration">Время жизни ссылки</param>
+	/// <param name="ct">Токен отмены операции</param>
+	/// <returns>Возвращает подписанную ссылку на файл</returns>
+	public async Task<string?> GetFileUrl(string fileName, TimeSpan expiration, CancellationToken ct)
 	{
-		return await IsFileExists(fileName, cancellation).ConfigureAwait(false)
+		return await IsFileExists(fileName, ct).ConfigureAwait(false)
 			? BuildFileUrl(fileName, expiration)
 			: null;
 	}
 
-	public async Task<bool> IsBucketExists(CancellationToken cancellation)
-	{
-		HttpResponseMessage response;
-		using (var request = CreateRequest(HttpMethod.Head))
-		{
-			response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
-		}
-
-		switch (response.StatusCode)
-		{
-			case HttpStatusCode.OK:
-				response.Dispose();
-				return true;
-			case HttpStatusCode.NotFound:
-				response.Dispose();
-				return false;
-			default:
-				Errors.UnexpectedResult(response);
-				return false;
-		}
-	}
-
-	public async Task<bool> IsFileExists(string fileName, CancellationToken cancellation)
+	public async Task<bool> IsFileExists(string fileName, CancellationToken ct)
 	{
 		HttpResponseMessage response;
 		using (var request = CreateRequest(HttpMethod.Head, fileName))
 		{
-			response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
+			response = await Send(request, EmptyPayloadHash, ct).ConfigureAwait(false);
 		}
 
 		switch (response.StatusCode)
@@ -221,22 +175,22 @@ public sealed class S3Client
 		}
 	}
 
-	public async IAsyncEnumerable<string> List(string? prefix, [EnumeratorCancellation] CancellationToken cancellation)
+	public async IAsyncEnumerable<string> List(string? prefix, [EnumeratorCancellation] CancellationToken ct)
 	{
 		var url = string.IsNullOrEmpty(prefix)
 			? $"{_bucket}?list-type=2"
-			: $"{_bucket}?list-type=2&prefix={HttpHelper.EncodeName(prefix)}";
+			: $"{_bucket}?list-type=2&prefix={HttpDescription.EncodeName(prefix)}";
 
 		HttpResponseMessage response;
 		using (var request = new HttpRequestMessage(HttpMethod.Get, url))
 		{
-			response = await Send(request, EmptyPayloadHash, cancellation).ConfigureAwait(false);
+			response = await Send(request, EmptyPayloadHash, ct).ConfigureAwait(false);
 		}
 
 		if (response.StatusCode is HttpStatusCode.OK)
 		{
 			var responseStream = await response.Content
-				.ReadAsStreamAsync(cancellation)
+				.ReadAsStreamAsync(ct)
 				.ConfigureAwait(false);
 
 			while (responseStream.CanRead)
@@ -259,220 +213,62 @@ public sealed class S3Client
 		Errors.UnexpectedResult(response);
 	}
 
-	public Task<bool> UploadFile(string fileName, string contentType, Stream data, CancellationToken cancellation)
+	/// <summary>
+	/// Загружает файл с ручным управлением загрузкой блоков файла
+	/// </summary>
+	/// <param name="fileName">Название файла</param>
+	/// <param name="contentType">Тип загружаемого файла</param>
+	/// <param name="ct">Токен отмены операции</param>
+	/// <returns>Возвращает объект управления загрузкой</returns>
+	public async Task<S3Upload> UploadFile(string fileName, string contentType, CancellationToken ct)
 	{
-		var length = data.TryGetLength();
-
-		return length is null or 0 or > DefaultPartSize
-			? PutFileMultipart(fileName, contentType, data, cancellation)
-			: PutFile(fileName, contentType, data, cancellation);
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public Task<bool> UploadFile(string fileName, string contentType, byte[] data, CancellationToken cancellation)
-	{
-		return UploadFile(fileName, contentType, data, 0, data.Length, cancellation);
-	}
-
-	internal async Task<bool> MultipartAbort(string encodedFileName, string uploadId, CancellationToken ct)
-	{
-		var url = $"{_bucket}/{encodedFileName}?uploadId={uploadId}";
-
-		HttpResponseMessage? response = null;
-		using (var request = new HttpRequestMessage(HttpMethod.Delete, url))
-		{
-			try
-			{
-				response = await Send(request, EmptyPayloadHash, ct).ConfigureAwait(false);
-			}
-			catch
-			{
-				// ignored
-			}
-		}
-
-		if (response is null)
-		{
-			return false;
-		}
-
-#pragma warning disable CA1508
-		var result = response is
-		{
-			IsSuccessStatusCode: true,
-			StatusCode: HttpStatusCode.NoContent,
-		};
-#pragma warning restore CA1508
-
-		response.Dispose();
-
-		return result;
-	}
-
-	internal async Task<bool> MultipartComplete(
-		string encodedFileName,
-		string uploadId,
-		string[] partTags,
-		int tagsCount,
-		CancellationToken ct)
-	{
-		var builder = StringUtils.GetBuilder();
-
-		builder.Append("<CompleteMultipartUpload>");
-		for (var i = 0; i < partTags.Length; i++)
-		{
-			if (i == tagsCount)
-			{
-				break;
-			}
-
-			builder.Append("<Part>");
-			builder.Append("<PartNumber>", i + 1, "</PartNumber>");
-			builder.Append("<ETag>", partTags[i], "</ETag>");
-			builder.Append("</Part>");
-		}
-
-		var data = builder
-			.Append("</CompleteMultipartUpload>")
-			.Flush();
-
-		var payloadHash = GetPayloadHash(data);
-
-		HttpResponseMessage response;
-		using (var request = new HttpRequestMessage(
-			       HttpMethod.Post,
-			       $"{_bucket}/{encodedFileName}?uploadId={uploadId}"))
-		{
-			using (var content = new StringContent(data, Encoding.UTF8))
-			{
-				request.Content = content;
-				response = await Send(request, payloadHash, ct).ConfigureAwait(false);
-			}
-		}
-
-		var result = response is { IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK };
-
-		response.Dispose();
-		return result;
-	}
-
-	internal async Task<string?> MultipartUpload(
-		string encodedFileName,
-		string uploadId,
-		int partNumber,
-		byte[] partData,
-		int partSize,
-		CancellationToken ct)
-	{
-		var payloadHash = GetPayloadHash(partData.AsSpan(0, partSize));
-		var url = $"{_bucket}/{encodedFileName}?partNumber={partNumber}&uploadId={uploadId}";
-
-		HttpResponseMessage response;
-		using (var request = new HttpRequestMessage(HttpMethod.Put, url))
-		{
-			using (var content = new ByteArrayContent(partData, 0, partSize))
-			{
-				content.Headers.Add("content-length", partSize.ToString());
-				request.Content = content;
-
-				response = await Send(request, payloadHash, ct).ConfigureAwait(false);
-			}
-		}
-
-		var result = response is { IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK }
-			? response.Headers.ETag?.Tag
-			: null;
-
-		response.Dispose();
-		return result;
-	}
-
-	private async Task<bool> UploadFile(
-		string fileName,
-		string contentType,
-		byte[] data,
-		int offset,
-		int count,
-		CancellationToken cancellation)
-	{
-		var payloadHash = GetPayloadHash(data);
-
-		HttpResponseMessage response;
-		using (var request = CreateRequest(HttpMethod.Put, fileName))
-		{
-			using (var content = new ByteArrayContent(data, offset, count))
-			{
-				content.Headers.Add("content-type", contentType);
-				request.Content = content;
-
-				response = await Send(request, payloadHash, cancellation).ConfigureAwait(false);
-			}
-		}
-
-		if (response.StatusCode is HttpStatusCode.OK)
-		{
-			response.Dispose();
-			return true;
-		}
-
-		Errors.UnexpectedResult(response);
-		return false;
-	}
-
-	private async Task<S3Upload> UploadFile(string fileName, string contentType, CancellationToken cancellation)
-	{
-		var encodedFileName = HttpHelper.EncodeName(fileName);
-		var uploadId = await MultipartStart(encodedFileName, contentType, cancellation);
+		var encodedFileName = HttpDescription.EncodeName(fileName);
+		var uploadId = await MultipartStart(encodedFileName, contentType, ct).ConfigureAwait(false);
 
 		return new S3Upload(this, fileName, encodedFileName, uploadId);
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private HttpRequestMessage CreateRequest(HttpMethod method, string? fileName = null)
+	/// <summary>
+	/// Загружает файл на сервер
+	/// </summary>
+	/// <param name="fileName">Название файла</param>
+	/// <param name="contentType">Тип загружаемого файла</param>
+	/// <param name="data">Данные файл</param>
+	/// <param name="ct">Токен отмены операции</param>
+	/// <remarks>Если файл превышает 5 МБ, то будет применена Multipart-загрузка</remarks>
+	/// <returns>Возвращает результат загрузки файла</returns>
+	public Task<bool> UploadFile(string fileName, string contentType, Stream data, CancellationToken ct)
 	{
-		var url = new ValueStringBuilder(stackalloc char[512]);
-		url.Append(_bucket);
+		var length = data.TryGetLength();
 
-		// ReSharper disable once InvertIf
-		if (!string.IsNullOrEmpty(fileName))
-		{
-			url.Append('/');
-			HttpHelper.AppendEncodedName(ref url, fileName);
-		}
-
-		return new HttpRequestMessage(method, new Uri(url.Flush(), UriKind.Absolute));
+		return length is null or 0 or > DefaultPartSize
+			? ExecuteMultipartUpload(fileName, contentType, data, ct)
+			: PutFile(fileName, contentType, data, ct);
 	}
 
-	private async Task<string> MultipartStart(string encodedFileName, string contentType, CancellationToken ct)
+	/// <summary>
+	/// Загружает файл на сервер
+	/// </summary>
+	/// <param name="fileName">Название файла</param>
+	/// <param name="contentType">Тип загружаемого файла</param>
+	/// <param name="data">Данные файл</param>
+	/// <param name="ct">Токен отмены операции</param>
+	/// <remarks>Если файл превышает 5 МБ, то будет применена Multipart-загрузка</remarks>
+	/// <returns>Возвращает результат загрузки файла</returns>
+	public Task<bool> UploadFile(string fileName, string contentType, byte[] data, CancellationToken ct)
 	{
-		HttpResponseMessage response;
-		using (var request = new HttpRequestMessage(HttpMethod.Post, $"{_bucket}/{encodedFileName}?uploads"))
-		{
-			using (var content = new ByteArrayContent(Array.Empty<byte>()))
-			{
-				content.Headers.Add("content-type", contentType);
-				request.Content = content;
+		var length = data.Length;
 
-				response = await Send(request, EmptyPayloadHash, ct).ConfigureAwait(false);
-			}
-		}
-
-		if (response.StatusCode is HttpStatusCode.OK)
-		{
-			var responseStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-			var result = XmlStreamReader.ReadString(responseStream, "UploadId");
-
-			await responseStream.DisposeAsync().ConfigureAwait(false);
-			response.Dispose();
-
-			return result;
-		}
-
-		Errors.UnexpectedResult(response);
-		return string.Empty;
+		return length > DefaultPartSize
+			? ExecuteMultipartUpload(fileName, contentType, data, ct)
+			: PutFile(fileName, contentType, data, data.Length, ct);
 	}
 
-	private async Task<bool> PutFile(string fileName, string contentType, Stream data, CancellationToken ct)
+	private async Task<bool> PutFile(
+		string fileName,
+		string contentType,
+		Stream data,
+		CancellationToken ct)
 	{
 		var bufferPool = ArrayPool<byte>.Shared;
 
@@ -510,41 +306,34 @@ public sealed class S3Client
 		return false;
 	}
 
-	private async Task<bool> PutFileMultipart(string fileName, string contentType, Stream data, CancellationToken ct)
+	private async Task<bool> PutFile(
+		string fileName,
+		string contentType,
+		byte[] data,
+		int length,
+		CancellationToken ct)
 	{
-		using var upload = await UploadFile(fileName, contentType, ct);
+		var payloadHash = GetPayloadHash(data);
 
-		if (await upload.Upload(data, ct) && await upload.Complete(ct))
+		HttpResponseMessage response;
+		using (var request = CreateRequest(HttpMethod.Put, fileName))
 		{
+			using (var content = new ByteArrayContent(data, 0, length))
+			{
+				content.Headers.Add("content-type", contentType);
+				request.Content = content;
+
+				response = await Send(request, payloadHash, ct).ConfigureAwait(false);
+			}
+		}
+
+		if (response.StatusCode is HttpStatusCode.OK)
+		{
+			response.Dispose();
 			return true;
 		}
 
-		await upload.Abort(ct);
+		Errors.UnexpectedResult(response);
 		return false;
-	}
-
-	private Task<HttpResponseMessage> Send(HttpRequestMessage request, string payloadHash, CancellationToken ct)
-	{
-		if (_disposed)
-		{
-			Errors.Disposed();
-		}
-
-		var now = DateTime.UtcNow;
-
-		var headers = request.Headers;
-		headers.Add("host", _endpoint);
-		headers.Add("x-amz-content-sha256", payloadHash);
-		headers.Add("x-amz-date", now.ToString(Signature.Iso8601DateTime, CultureInfo.InvariantCulture));
-
-		if (_useHttp2)
-		{
-			request.Version = HttpVersion.Version20;
-		}
-
-		var signature = _signature.Calculate(request, payloadHash, _s3Headers, now);
-		headers.TryAddWithoutValidation("Authorization", _http.BuildHeader(now, signature));
-
-		return _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
 	}
 }

@@ -12,7 +12,7 @@
     <PropertyGroup>
         <Title>Storage</Title>
         <Description>Simple client for S3-storage</Description>
-        <Version>0.6.2</Version>
+        <Version>0.6.3</Version>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>git://github.com/teoadal/Storage</RepositoryUrl>
         <PackageId>Storages3</PackageId>
@@ -46,6 +46,18 @@
 		<InternalsVisibleTo Include="Storage.Tests" />
 		<InternalsVisibleTo Include="Storage.Benchmark" />
 		<InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Update="S3Client.Buckets.cs">
+	    <DependentUpon>S3Client.cs</DependentUpon>
+	  </Compile>
+	  <Compile Update="S3Client.Transport.cs">
+	    <DependentUpon>S3Client.cs</DependentUpon>
+	  </Compile>
+	  <Compile Update="S3Client.Multipart.cs">
+	    <DependentUpon>S3Client.cs</DependentUpon>
+	  </Compile>
 	</ItemGroup>
 
 </Project>

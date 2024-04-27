@@ -48,7 +48,7 @@ public sealed class StorageFixture : IDisposable, IAsyncDisposable
 		return new MemoryStream(GetByteArray(size));
 	}
 
-	public static MemoryStream GetEmptyByteStream(long? size)
+	public static MemoryStream GetEmptyByteStream(long? size = null)
 	{
 		return size.HasValue
 			? new MemoryStream(new byte[(int)size])

@@ -21,7 +21,7 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.1" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
         <PackageReference Include="Minio" Version="6.0.2" />
-        <PackageReference Include="AWSSDK.S3" Version="3.7.307.23" />
+        <PackageReference Include="AWSSDK.S3" Version="3.7.307.24" />
     </ItemGroup>
 
 

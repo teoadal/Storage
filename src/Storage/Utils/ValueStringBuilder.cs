@@ -147,7 +147,9 @@ internal ref struct ValueStringBuilder(Span<char> buffer)
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public readonly ReadOnlySpan<char> AsReadonlySpan()
 	{
-		return _buffer[.._length];
+		return _length == 0
+			? ReadOnlySpan<char>.Empty
+			: _buffer[.._length];
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -173,6 +175,11 @@ internal ref struct ValueStringBuilder(Span<char> buffer)
 
 	public void RemoveLast()
 	{
+		if (_length == 0)
+		{
+			return;
+		}
+
 		_length--;
 	}
 

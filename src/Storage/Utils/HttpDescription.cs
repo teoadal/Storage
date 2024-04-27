@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Storage.Utils;
 
-internal readonly struct HttpHelper
+internal readonly struct HttpDescription
 {
 	private static readonly FrozenSet<char> _validUrlCharacters =
 		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~".ToFrozenSet();
@@ -15,7 +15,7 @@ internal readonly struct HttpHelper
 	private readonly string _urlMiddle;
 	private readonly string _urlStart;
 
-	public HttpHelper(string accessKey, string region, string service, string[] signedHeaders)
+	public HttpDescription(string accessKey, string region, string service, string[] signedHeaders)
 	{
 		_headerStart = $"AWS4-HMAC-SHA256 Credential={accessKey}/";
 		_headerEnd = $"/{region}/{service}/aws4_request, SignedHeaders={string.Join(';', signedHeaders)}, Signature=";

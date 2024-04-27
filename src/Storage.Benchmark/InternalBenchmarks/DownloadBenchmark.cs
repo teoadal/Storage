@@ -18,7 +18,7 @@ public class DownloadBenchmark
 		var config = BenchmarkHelper.ReadConfiguration();
 		var settings = BenchmarkHelper.ReadSettings(config);
 
-		_cancellation = new CancellationToken();
+		_cancellation = CancellationToken.None;
 		_fileId = "привет-как-делаdcd156a8-b6bd-4130-a2c7-8a38dbfebbc7";
 		_s3Client = BenchmarkHelper.CreateStoragesClient(settings);
 

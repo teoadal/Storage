@@ -1,7 +1,7 @@
 ﻿namespace Storage;
 
 /// <summary>
-///     Wrapper around <see cref="HttpResponseMessage" /> with a data of a file from storage
+/// Обёртка над <see cref="HttpResponseMessage"/>, позволяющая удобно работать с загруженным файлом
 /// </summary>
 [DebuggerDisplay("{ToString()}")]
 public sealed class S3File : IDisposable
@@ -14,9 +14,9 @@ public sealed class S3File : IDisposable
 	}
 
 	/// <summary>
-	///     Type of file content in MIME
+	/// Тип файла в MIME
 	/// </summary>
-	/// <remarks>It will be take from header "Content-Type" of <see cref="HttpResponseMessage" /></remarks>
+	/// <remarks>Берётся из заголовка "Content-Type" из <see cref="HttpResponseMessage" /></remarks>
 	public string? ContentType
 	{
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -24,7 +24,7 @@ public sealed class S3File : IDisposable
 	}
 
 	/// <summary>
-	///     Is the file data received successfully?
+	/// Файл существовал?
 	/// </summary>
 	public bool Exists
 	{
@@ -33,9 +33,9 @@ public sealed class S3File : IDisposable
 	}
 
 	/// <summary>
-	///     Length of file data
+	/// Размер файла
 	/// </summary>
-	/// <remarks>It will be take from header "Content-Length" of <see cref="HttpResponseMessage" /></remarks>
+	/// <remarks>Берётся из заголовка "Content-Length" из <see cref="HttpResponseMessage" /></remarks>
 	public long? Length
 	{
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -43,7 +43,7 @@ public sealed class S3File : IDisposable
 	}
 
 	/// <summary>
-	///     The code of storage response
+	/// Ответ сервера
 	/// </summary>
 	public HttpStatusCode StatusCode
 	{
@@ -63,18 +63,18 @@ public sealed class S3File : IDisposable
 	}
 
 	/// <summary>
-	///     Gets stream of the file data from <see cref="HttpResponseMessage" />
+	/// Возвращает Stream с данными файла из <see cref="HttpResponseMessage" />
 	/// </summary>
 	/// <returns>Stream of data</returns>
-	/// <remarks>When stream will be closed the <see cref="HttpResponseMessage" /> will be disposed</remarks>
-	public async Task<Stream> GetStream(CancellationToken cancellation)
+	/// <remarks>Когда Stream будет закрыт, <see cref="HttpResponseMessage" /> будет уничтожен</remarks>
+	public async Task<Stream> GetStream(CancellationToken ct)
 	{
 		if (!_response.IsSuccessStatusCode)
 		{
 			return Stream.Null;
 		}
 
-		var stream = await _response.Content.ReadAsStreamAsync(cancellation).ConfigureAwait(false);
+		var stream = await _response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
 		return new S3Stream(_response, stream);
 	}
 

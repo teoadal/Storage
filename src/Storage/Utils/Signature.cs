@@ -126,11 +126,11 @@ internal sealed class Signature(string secretKey, string region, string service)
 				}
 
 				var name = UnescapeString(query.AsSpan(scanIndex, equalIndex - scanIndex));
-				HttpHelper.AppendEncodedName(ref builder, name);
+				HttpDescription.AppendEncodedName(ref builder, name);
 				builder.Append('=');
 
 				var value = UnescapeString(query.AsSpan(equalIndex + 1, delimiter - equalIndex - 1));
-				HttpHelper.AppendEncodedName(ref builder, value);
+				HttpDescription.AppendEncodedName(ref builder, value);
 				builder.Append('&');
 
 				equalIndex = query.IndexOf('=', delimiter);
@@ -143,9 +143,9 @@ internal sealed class Signature(string secretKey, string region, string service)
 			{
 				if (delimiter > scanIndex)
 				{
-					HttpHelper.AppendEncodedName(ref builder, query.AsSpan(scanIndex, delimiter - scanIndex));
+					HttpDescription.AppendEncodedName(ref builder, query.AsSpan(scanIndex, delimiter - scanIndex));
 					builder.Append('=');
-					HttpHelper.AppendEncodedName(ref builder, string.Empty);
+					HttpDescription.AppendEncodedName(ref builder, string.Empty);
 					builder.Append('&');
 				}
 			}
