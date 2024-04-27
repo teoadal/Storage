@@ -1,25 +1,16 @@
-﻿using FluentAssertions;
-using Storage.Tests.Mocks;
+﻿using Storage.Tests.Utils;
 
 namespace Storage.Tests;
 
-public sealed class BucketShould : IClassFixture<StorageFixture>
+public sealed class BucketShould(StorageFixture fixture) : IClassFixture<StorageFixture>
 {
-	private readonly CancellationToken _cancellation;
-	private readonly StorageFixture _fixture;
-	private readonly S3Client _client;
-
-	public BucketShould(StorageFixture fixture)
-	{
-		_cancellation = CancellationToken.None;
-		_client = fixture.S3Client;
-		_fixture = fixture;
-	}
+	private readonly CancellationToken _cancellation = CancellationToken.None;
+	private readonly S3Client _client = fixture.S3Client;
 
 	[Fact]
 	public async Task CreateBucket()
 	{
-		var settings = _fixture.Settings;
+		var settings = fixture.Settings;
 
 		// don't use using here
 		var client =
@@ -27,13 +18,13 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
 				new S3Settings
 				{
 					AccessKey = settings.AccessKey,
-					Bucket = _fixture.Create<string>(),
+					Bucket = fixture.Create<string>(),
 					EndPoint = settings.EndPoint,
 					Port = settings.Port,
 					SecretKey = settings.SecretKey,
 					UseHttps = settings.UseHttps,
 				},
-				_fixture.HttpClient);
+				fixture.HttpClient);
 
 		var bucketCreateResult = await client.CreateBucket(_cancellation);
 
@@ -55,7 +46,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
 	[Fact]
 	public async Task BeNotExists()
 	{
-		var settings = _fixture.Settings;
+		var settings = fixture.Settings;
 
 		// don't dispose it
 		var client =
@@ -63,13 +54,13 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
 				new S3Settings
 				{
 					AccessKey = settings.AccessKey,
-					Bucket = _fixture.Create<string>(),
+					Bucket = fixture.Create<string>(),
 					EndPoint = settings.EndPoint,
 					Port = settings.Port,
 					SecretKey = settings.SecretKey,
 					UseHttps = settings.UseHttps,
 				},
-				_fixture.HttpClient);
+				fixture.HttpClient);
 
 		var bucketExistsResult = await client.IsBucketExists(_cancellation);
 
@@ -88,7 +79,7 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
 	[Fact]
 	public Task NotThrowIfDeleteNotExistsBucket()
 	{
-		var settings = _fixture.Settings;
+		var settings = fixture.Settings;
 
 		// don't use using here
 		var client =
@@ -96,13 +87,13 @@ public sealed class BucketShould : IClassFixture<StorageFixture>
 				new S3Settings
 				{
 					AccessKey = settings.AccessKey,
-					Bucket = _fixture.Create<string>(),
+					Bucket = fixture.Create<string>(),
 					EndPoint = settings.EndPoint,
 					Port = settings.Port,
 					SecretKey = settings.SecretKey,
 					UseHttps = settings.UseHttps,
 				},
-				_fixture.HttpClient);
+				fixture.HttpClient);
 
 		return client
 			.Invoking(c => c.DeleteBucket(_cancellation))

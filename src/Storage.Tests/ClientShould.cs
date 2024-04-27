@@ -1,24 +1,15 @@
-﻿using System.Text.Json;
-using FluentAssertions;
-using Storage.Tests.Mocks;
+﻿using Storage.Tests.Utils;
 
 namespace Storage.Tests;
 
-public sealed class ClientShould : IClassFixture<StorageFixture>
+public sealed class ClientShould(StorageFixture fixture) : IClassFixture<StorageFixture>
 {
-	private readonly S3Client _client;
-	private readonly StorageFixture _fixture;
-
-	public ClientShould(StorageFixture fixture)
-	{
-		_fixture = fixture;
-		_client = fixture.S3Client;
-	}
+	private readonly S3Client _client = fixture.S3Client;
 
 	[Fact]
 	public void DeserializeSettingsJson()
 	{
-		var expected = _fixture.Settings;
+		var expected = fixture.Settings;
 
 		var json = JsonSerializer.Serialize(expected);
 		var actual = JsonSerializer.Deserialize<S3Settings>(json);
@@ -31,6 +22,6 @@ public sealed class ClientShould : IClassFixture<StorageFixture>
 	{
 		_client
 			.Bucket
-			.Should().Be(_fixture.Settings.Bucket);
+			.Should().Be(fixture.Settings.Bucket);
 	}
 }

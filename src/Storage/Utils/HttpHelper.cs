@@ -1,12 +1,13 @@
 ﻿using System.Buffers;
+using System.Collections.Frozen;
 using System.Text;
 
 namespace Storage.Utils;
 
 internal readonly struct HttpHelper
 {
-	private static readonly HashSet<char> _validUrlCharacters =
-		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~".ToHashSet();
+	private static readonly FrozenSet<char> _validUrlCharacters =
+		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~".ToFrozenSet();
 
 	private readonly string _headerEnd;
 	private readonly string _headerStart;

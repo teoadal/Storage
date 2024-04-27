@@ -1,40 +1,26 @@
-﻿using System.Globalization;
-using AutoFixture;
+﻿using AutoFixture;
+using Testcontainers.Minio;
 
-namespace Storage.Tests.Mocks;
+namespace Storage.Tests.Utils;
 
-public sealed class StorageFixture : IDisposable
+public sealed class StorageFixture : IDisposable, IAsyncDisposable
 {
 	public const string StreamContentType = "application/octet-stream";
 
 	private const int DefaultByteArraySize = 1 * 1024 * 1024; // 7Mb
 
+	private readonly MinioContainer? _container;
 	private Fixture? _fixture;
 
 	public StorageFixture()
 	{
-		var environmentPort = Environment.GetEnvironmentVariable("STORAGE_PORT");
-		int? port = string.IsNullOrEmpty(environmentPort)
-			? 5300
-			: environmentPort is "null"
-				? null
-				: int.Parse(environmentPort, CultureInfo.InvariantCulture);
+		_container = TestHelper.CreateContainer();
 
-		var environmentHttps = Environment.GetEnvironmentVariable("STORAGE_HTTPS");
-		var https = !string.IsNullOrEmpty(environmentHttps) && bool.Parse(environmentHttps);
-
-		Settings = new S3Settings
-		{
-			AccessKey = Environment.GetEnvironmentVariable("STORAGE_KEY") ?? "ROOTUSER",
-			Bucket = Environment.GetEnvironmentVariable("STORAGE_BUCKET") ?? "reconfig",
-			EndPoint = Environment.GetEnvironmentVariable("STORAGE_ENDPOINT") ?? "localhost",
-			Port = port,
-			SecretKey = Environment.GetEnvironmentVariable("STORAGE_SECRET") ?? "ChangeMe123",
-			UseHttps = https,
-		};
-
+		Settings = TestHelper.CreateSettings(_container);
 		HttpClient = new HttpClient();
 		S3Client = new S3Client(Settings);
+
+		TestHelper.EnsureBucketExists(S3Client);
 	}
 
 	internal S3Settings Settings { get; }
@@ -69,14 +55,22 @@ public sealed class StorageFixture : IDisposable
 			: new MemoryStream();
 	}
 
+	public T Create<T>()
+	{
+		return Mocks.Create<T>();
+	}
+
 	public void Dispose()
 	{
 		HttpClient.Dispose();
 		S3Client.Dispose();
 	}
 
-	public T Create<T>()
+	public async ValueTask DisposeAsync()
 	{
-		return Mocks.Create<T>();
+		if (_container != null)
+		{
+			await _container.DisposeAsync();
+		}
 	}
 }
