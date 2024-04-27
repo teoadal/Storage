@@ -1,5 +1,5 @@
 ﻿using AutoFixture;
-using Testcontainers.Minio;
+using DotNet.Testcontainers.Containers;
 
 namespace Storage.Tests.Utils;
 
@@ -9,7 +9,7 @@ public sealed class StorageFixture : IDisposable, IAsyncDisposable
 
 	private const int DefaultByteArraySize = 1 * 1024 * 1024; // 7Mb
 
-	private readonly MinioContainer? _container;
+	private readonly IContainer? _container;
 	private Fixture? _fixture;
 
 	public StorageFixture()
