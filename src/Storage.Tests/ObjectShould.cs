@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using static Storage.Tests.StorageFixture;
 
 namespace Storage.Tests;
@@ -506,6 +506,25 @@ public sealed class ObjectShould : IClassFixture<StorageFixture>
 			.Invoking(client => client.UploadFile(fileName, StreamContentType, fileArray, _ct))
 			.Should().ThrowAsync<HttpRequestException>();
 	}
+
+	[Theory]
+	[InlineData("some/foo/audio.wav", 1024)]
+	[InlineData("another/path/test.mp3", 2048)]
+	public async Task UploadFileWithNestedPath(string nestedFileName, int dataSize)
+	{
+		var data = GetByteArray(dataSize); // Пример данных, которые вы хотите загрузить
+
+		// Act
+		var result = await _client.UploadFile(nestedFileName, StreamContentType, data, _ct);
+		Assert.True(result);
+
+		// Assert
+		var exists = await _client.IsFileExists(nestedFileName, _ct);
+		Assert.True(exists, "The object should exist in the S3 bucket");
+
+		await DeleteTestFile(nestedFileName);
+	}
+
 
 	[Fact]
 	public async Task ThrowIfUploadDisposed()
