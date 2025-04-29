@@ -1,11 +1,11 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Globalization;
 
 namespace Storage.Utils;
 
-internal ref struct ValueStringBuilder(Span<char> buffer)
+internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 {
-	private Span<char> _buffer = buffer;
+	private Span<char> _buffer = initialBuffer;
 	private int _length = 0;
 	private char[]? _array = null;
 
