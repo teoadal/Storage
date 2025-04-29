@@ -1,5 +1,4 @@
-﻿using System.Buffers;
-using Storage.Utils;
+﻿using Storage.Utils;
 using static Storage.Utils.HashHelper;
 
 namespace Storage;
@@ -14,25 +13,26 @@ public sealed partial class S3Client
 {
 	internal const int DefaultPartSize = 5 * 1024 * 1024; // 5 Mb
 
-	internal readonly string Bucket;
-
-	private static readonly string[] _s3Headers = // trimmed, lower invariant, ordered
+	private static readonly string[] S3Headers = // trimmed, lower invariant, ordered
 	[
 		"host",
 		"x-amz-content-sha256",
 		"x-amz-date",
 	];
 
+	public readonly IArrayPool ArrayPool;
+	public readonly string Bucket;
+
 	private readonly string _bucket;
-	private readonly string _endpoint;
-	private readonly HttpDescription _http;
 	private readonly HttpClient _client;
+	private readonly string _endpoint;
+	private readonly HttpDescription _httpDescription;
 	private readonly Signature _signature;
 	private readonly bool _useHttp2;
 
 	private bool _disposed;
 
-	public S3Client(S3Settings settings, HttpClient? client = null)
+	public S3Client(S3Settings settings, HttpClient? client = null, IArrayPool? arrayProvider = null)
 	{
 		Bucket = settings.Bucket;
 
@@ -40,11 +40,17 @@ public sealed partial class S3Client
 		var scheme = settings.UseHttps ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
 		var port = settings.Port.HasValue ? $":{settings.Port}" : string.Empty;
 
+		ArrayPool = arrayProvider ?? DefaultArrayPool.Instance;
 		_bucket = $"{scheme}://{settings.EndPoint}{port}/{bucket}";
 		_client = client ?? new HttpClient();
 		_endpoint = $"{settings.EndPoint}{port}";
-		_http = new HttpDescription(settings.AccessKey, settings.Region, settings.Service, _s3Headers);
-		_signature = new Signature(settings.SecretKey, settings.Region, settings.Service);
+		_httpDescription = new HttpDescription(
+			ArrayPool,
+			settings.AccessKey,
+			settings.Region,
+			settings.Service,
+			S3Headers);
+		_signature = new Signature(_httpDescription, settings.SecretKey, settings.Region, settings.Service);
 		_useHttp2 = settings.UseHttp2;
 	}
 
@@ -57,7 +63,7 @@ public sealed partial class S3Client
 	public string BuildFileUrl(string fileName, TimeSpan expiration)
 	{
 		var now = DateTime.UtcNow;
-		var url = _http.BuildUrl(_bucket, fileName, now, expiration);
+		var url = _httpDescription.BuildUrl(_bucket, fileName, now, expiration);
 		var signature = _signature.Calculate(url, now);
 
 		return $"{url}&X-Amz-Signature={signature}";
@@ -179,7 +185,7 @@ public sealed partial class S3Client
 	{
 		var url = string.IsNullOrEmpty(prefix)
 			? $"{_bucket}?list-type=2"
-			: $"{_bucket}?list-type=2&prefix={HttpDescription.EncodeName(prefix)}";
+			: $"{_bucket}?list-type=2&prefix={_httpDescription.EncodeName(prefix)}";
 
 		HttpResponseMessage response;
 		using (var request = new HttpRequestMessage(HttpMethod.Get, url))
@@ -222,7 +228,7 @@ public sealed partial class S3Client
 	/// <returns>Возвращает объект управления загрузкой</returns>
 	public async Task<S3Upload> UploadFile(string fileName, string contentType, CancellationToken ct)
 	{
-		var encodedFileName = HttpDescription.EncodeName(fileName);
+		var encodedFileName = _httpDescription.EncodeName(fileName);
 		var uploadId = await MultipartStart(encodedFileName, contentType, ct).ConfigureAwait(false);
 
 		return new S3Upload(this, fileName, encodedFileName, uploadId);
@@ -270,12 +276,10 @@ public sealed partial class S3Client
 		Stream data,
 		CancellationToken ct)
 	{
-		var bufferPool = ArrayPool<byte>.Shared;
-
-		var buffer = bufferPool.Rent((int)data.Length); // размер точно есть
+		var buffer = ArrayPool.Rent<byte>((int)data.Length); // размер точно есть
 		var dataSize = await data.ReadAsync(buffer, ct).ConfigureAwait(false);
 
-		var payloadHash = GetPayloadHash(buffer.AsSpan(0, dataSize));
+		var payloadHash = GetPayloadHash(buffer.AsSpan(0, dataSize), ArrayPool);
 
 		HttpResponseMessage response;
 		using (var request = CreateRequest(HttpMethod.Put, fileName))
@@ -291,7 +295,7 @@ public sealed partial class S3Client
 				}
 				finally
 				{
-					bufferPool.Return(buffer);
+					ArrayPool.Return(buffer);
 				}
 			}
 		}
@@ -313,7 +317,7 @@ public sealed partial class S3Client
 		int length,
 		CancellationToken ct)
 	{
-		var payloadHash = GetPayloadHash(data);
+		var payloadHash = GetPayloadHash(data, ArrayPool);
 
 		HttpResponseMessage response;
 		using (var request = CreateRequest(HttpMethod.Put, fileName))

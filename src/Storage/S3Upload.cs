@@ -1,5 +1,4 @@
-﻿using System.Buffers;
-using Storage.Utils;
+﻿using Storage.Utils;
 
 namespace Storage;
 
@@ -8,6 +7,7 @@ namespace Storage;
 /// </summary>
 public sealed class S3Upload : IDisposable
 {
+	private readonly IArrayPool _arrayPool;
 	private readonly S3Client _client;
 	private readonly string _encodedFileName;
 
@@ -21,10 +21,11 @@ public sealed class S3Upload : IDisposable
 		FileName = fileName;
 		UploadId = uploadId;
 
+		_arrayPool = client.ArrayPool;
 		_client = client;
 		_encodedFileName = encodedFileName;
 
-		_parts = ArrayPool<string>.Shared.Rent(16);
+		_parts = client.ArrayPool.Rent<string>(16);
 	}
 
 	/// <summary>
@@ -107,7 +108,7 @@ public sealed class S3Upload : IDisposable
 
 		if (_parts.Length == _partCount)
 		{
-			CollectionUtils.Resize(ref _parts, ArrayPool<string>.Shared, _partCount * 2);
+			CollectionUtils.Resize(ref _parts, _arrayPool, _partCount * 2);
 		}
 
 		_parts[_partCount++] = partId;
@@ -125,7 +126,7 @@ public sealed class S3Upload : IDisposable
 	/// <returns>Возвращает результат загрузки</returns>
 	public async Task<bool> AddParts(Stream data, CancellationToken ct)
 	{
-		_byteBuffer ??= ArrayPool<byte>.Shared.Rent(S3Client.DefaultPartSize);
+		_byteBuffer ??= _arrayPool.Rent<byte>(S3Client.DefaultPartSize);
 
 		while (true)
 		{
@@ -197,12 +198,12 @@ public sealed class S3Upload : IDisposable
 		}
 
 		Array.Clear(_parts, 0, _partCount);
-		ArrayPool<string>.Shared.Return(_parts);
+		_arrayPool.Return(_parts);
 		_parts = null!;
 
 		if (_byteBuffer is not null)
 		{
-			ArrayPool<byte>.Shared.Return(_byteBuffer);
+			_arrayPool.Return(_byteBuffer);
 			_byteBuffer = null;
 		}
 

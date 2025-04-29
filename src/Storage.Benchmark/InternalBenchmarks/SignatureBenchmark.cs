@@ -23,11 +23,13 @@ public class SignatureBenchmark
 		var data = BenchmarkHelper.ReadBigArray(config);
 		var settings = BenchmarkHelper.ReadSettings(config);
 
-		_headers = new[] { "host", "x-amz-content-sha256", "x-amz-date" };
+		_headers = ["host", "x-amz-content-sha256", "x-amz-date"];
 		_now = DateTime.UtcNow;
 		_request = new HttpRequestMessage(HttpMethod.Post, "http://company-name.com/controller");
-		_payloadHash = HashHelper.GetPayloadHash(data);
-		_signature = new Signature(settings.SecretKey, settings.Region, settings.Service);
+		_payloadHash = HashHelper.GetPayloadHash(data, DefaultArrayPool.Instance);
+		_signature = new Signature(
+			new HttpDescription(DefaultArrayPool.Instance, "", "", "", []),
+			settings.SecretKey, settings.Region, settings.Service);
 	}
 
 	[Benchmark]

@@ -16,7 +16,7 @@ public sealed class S3Settings
 
 	public string Service { get; init; } = "s3";
 
-	public bool UseHttp2 { get; init; } = false;
+	public bool UseHttp2 { get; init; }
 
 	public required bool UseHttps { get; init; }
 }

@@ -26,7 +26,7 @@ public class HashBenchmark
 	public int ByteHash()
 	{
 		return HashHelper
-			.GetPayloadHash(_byteData)
+			.GetPayloadHash(_byteData, DefaultArrayPool.Instance)
 			.Length;
 	}
 
@@ -34,7 +34,7 @@ public class HashBenchmark
 	public int StringHash()
 	{
 		return HashHelper
-			.GetPayloadHash(_stringData)
+			.GetPayloadHash(_stringData, DefaultArrayPool.Instance)
 			.Length;
 	}
 }

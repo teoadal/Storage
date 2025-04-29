@@ -2,6 +2,7 @@
 
 internal static class XmlStreamReader
 {
+	[SkipLocalsInit]
 	public static string ReadString(Stream stream, ReadOnlySpan<char> elementName, int valueBufferLength = 256)
 	{
 		Span<char> buffer = stackalloc char[valueBufferLength];

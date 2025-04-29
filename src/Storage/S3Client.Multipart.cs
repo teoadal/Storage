@@ -31,13 +31,11 @@ public sealed partial class S3Client
 			return false;
 		}
 
-#pragma warning disable CA1508
 		var result = response is
 		{
 			IsSuccessStatusCode: true,
 			StatusCode: HttpStatusCode.NoContent,
 		};
-#pragma warning restore CA1508
 
 		response.Dispose();
 
@@ -71,7 +69,7 @@ public sealed partial class S3Client
 			.Append("</CompleteMultipartUpload>")
 			.Flush();
 
-		var payloadHash = GetPayloadHash(data);
+		var payloadHash = GetPayloadHash(data, ArrayPool);
 
 		HttpResponseMessage response;
 		using (var request = new HttpRequestMessage(
@@ -99,7 +97,7 @@ public sealed partial class S3Client
 		int partSize,
 		CancellationToken ct)
 	{
-		var payloadHash = GetPayloadHash(partData.AsSpan(0, partSize));
+		var payloadHash = GetPayloadHash(partData.AsSpan(0, partSize), ArrayPool);
 		var url = $"{_bucket}/{encodedFileName}?partNumber={partNumber}&uploadId={uploadId}";
 
 		HttpResponseMessage response;

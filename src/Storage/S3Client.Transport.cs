@@ -1,4 +1,3 @@
-using System.Globalization;
 using Storage.Utils;
 
 namespace Storage;
@@ -8,17 +7,18 @@ namespace Storage;
 /// </summary>
 public sealed partial class S3Client
 {
+	[SkipLocalsInit]
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private HttpRequestMessage CreateRequest(HttpMethod method, string? fileName = null)
 	{
-		var url = new ValueStringBuilder(stackalloc char[512]);
+		var url = new ValueStringBuilder(stackalloc char[512], ArrayPool);
 		url.Append(_bucket);
 
 		// ReSharper disable once InvertIf
 		if (!string.IsNullOrEmpty(fileName))
 		{
 			url.Append('/');
-			HttpDescription.AppendEncodedName(ref url, fileName);
+			_httpDescription.AppendEncodedName(ref url, fileName);
 		}
 
 		return new HttpRequestMessage(method, new Uri(url.Flush(), UriKind.Absolute));
@@ -43,8 +43,8 @@ public sealed partial class S3Client
 			request.Version = HttpVersion.Version20;
 		}
 
-		var signature = _signature.Calculate(request, payloadHash, _s3Headers, now);
-		headers.TryAddWithoutValidation("Authorization", _http.BuildHeader(now, signature));
+		var signature = _signature.Calculate(request, payloadHash, S3Headers, now);
+		headers.TryAddWithoutValidation("Authorization", _httpDescription.BuildHeader(now, signature));
 
 		return _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
 	}

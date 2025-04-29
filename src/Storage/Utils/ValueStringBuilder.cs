@@ -1,13 +1,13 @@
-using System.Buffers;
-using System.Globalization;
-
 namespace Storage.Utils;
 
-internal ref struct ValueStringBuilder(Span<char> initialBuffer)
+internal ref struct ValueStringBuilder(Span<char> initialBuffer, IArrayPool arrayPool)
 {
 	private Span<char> _buffer = initialBuffer;
 	private int _length = 0;
 	private char[]? _array = null;
+
+	// ReSharper disable once ReplaceWithPrimaryConstructorParameter
+	private readonly IArrayPool _arrayPool = arrayPool;
 
 	// ReSharper disable once ConvertToAutoPropertyWithPrivateSetter
 	public readonly int Length
@@ -31,6 +31,7 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 		}
 	}
 
+	[SkipLocalsInit]
 	public void Append(int value)
 	{
 		Span<char> buffer = stackalloc char[10];
@@ -52,9 +53,10 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 		}
 	}
 
+	[SkipLocalsInit]
 	public void Append(DateTime value, string format)
 	{
-		Span<char> buffer = stackalloc char[16];
+		Span<char> buffer = stackalloc char[18];
 		var pos = _length;
 		if (value.TryFormat(buffer, out var written, format, CultureInfo.InvariantCulture))
 		{
@@ -73,9 +75,10 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 		}
 	}
 
+	[SkipLocalsInit]
 	public void Append(double value)
 	{
-		Span<char> buffer = stackalloc char[32];
+		Span<char> buffer = stackalloc char[33];
 		var pos = _length;
 		if (value.TryFormat(buffer, out var written, default, CultureInfo.InvariantCulture))
 		{
@@ -184,7 +187,7 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 	}
 
 	[ExcludeFromCodeCoverage]
-	public override readonly string ToString()
+	public readonly override string ToString()
 	{
 		return _length is 0
 			? string.Empty
@@ -207,7 +210,7 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 			(uint)(_length + additionalCapacityBeyondPos),
 			Math.Min((uint)_buffer.Length * 2, arrayMaxLength));
 
-		var poolArray = ArrayPool<char>.Shared.Rent(newCapacity);
+		var poolArray = _arrayPool.Rent<char>(newCapacity);
 
 		_buffer[.._length].CopyTo(poolArray);
 
@@ -215,7 +218,7 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 		_buffer = _array = poolArray;
 		if (toReturn is not null)
 		{
-			ArrayPool<char>.Shared.Return(toReturn);
+			_arrayPool.Return(toReturn);
 		}
 	}
 }

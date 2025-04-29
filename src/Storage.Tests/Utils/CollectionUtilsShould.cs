@@ -1,22 +1,22 @@
-using System.Buffers;
 using Storage.Utils;
 
 namespace Storage.Tests.Utils;
 
 public class CollectionUtilsShould
 {
-	private static readonly ArrayPool<int> Pool = ArrayPool<int>.Shared;
+	private static readonly IArrayPool Pool = DefaultArrayPool.Instance;
 
 	[Fact]
 	public void ResizeArray()
 	{
-		var array = Pool.Rent(5);
+		var array = Pool.Rent<int>(5);
 
 		var newLength = array.Length * 2;
 		CollectionUtils.Resize(ref array, Pool, newLength);
 
 		array.Length
-			.Should().BeGreaterOrEqualTo(newLength);
+			.Should()
+			.BeGreaterThanOrEqualTo(newLength);
 	}
 
 	[Fact]
@@ -28,6 +28,7 @@ public class CollectionUtilsShould
 		CollectionUtils.Resize(ref emptyArray, Pool, newLength);
 
 		emptyArray.Length
-			.Should().BeGreaterOrEqualTo(newLength);
+			.Should()
+			.BeGreaterThanOrEqualTo(newLength);
 	}
 }

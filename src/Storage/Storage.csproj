@@ -7,12 +7,13 @@
         <Nullable>enable</Nullable>
 		<PublishAot>true</PublishAot>
 		<StripSymbols>false</StripSymbols>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <PropertyGroup>
         <Title>Storage</Title>
         <Description>Simple client for S3-storage</Description>
-        <Version>0.6.3</Version>
+        <Version>0.6.4</Version>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>git://github.com/teoadal/Storage</RepositoryUrl>
         <PackageId>Storages3</PackageId>
@@ -33,13 +34,6 @@
     <ItemGroup>
         <InternalsVisibleTo Include="Storage.Benchmark" />
 		<InternalsVisibleTo Include="Storage.Tests" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.507">
-        <PrivateAssets>all</PrivateAssets>
-        <IncludeAssets>analyzers</IncludeAssets>
-      </PackageReference>
     </ItemGroup>
 
 	<ItemGroup>
