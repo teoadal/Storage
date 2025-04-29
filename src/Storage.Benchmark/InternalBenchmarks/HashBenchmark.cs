@@ -1,4 +1,4 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using Storage.Benchmark.Utils;
 using Storage.Utils;
@@ -26,7 +26,7 @@ public class HashBenchmark
 	public int ByteHash()
 	{
 		return HashHelper
-			.GetPayloadHash(_byteData, DefaultArrayPool.Instance)
+			.GetPayloadHash(_byteData)
 			.Length;
 	}
 
@@ -34,7 +34,7 @@ public class HashBenchmark
 	public int StringHash()
 	{
 		return HashHelper
-			.GetPayloadHash(_stringData, DefaultArrayPool.Instance)
+			.GetPayloadHash(_stringData)
 			.Length;
 	}
 }

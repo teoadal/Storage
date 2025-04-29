@@ -32,14 +32,12 @@ Job=.NET 8.0  Runtime=.NET 8.0
 Для работы с хранилищем необходимо создать клиент.
 
 ```csharp
-var storageClient = new S3Client(new S3Settings
+var storageClient = new (new S3BucketSettings
 {
     AccessKey = "ROOTUSER",
     Bucket = "mybucket",
-    EndPoint = "localhost",     // для Yandex.Objects это "storage.yandexcloud.net"
-    Port = 9000,                // стандартный порт Minio - 9000, для Yandex.Objects указывать не нужно
+    EndPoint = "http://localhost:9000",     // для Yandex.Objects это "https://storage.yandexcloud.net"
     SecretKey = "ChangeMe123",
-    UseHttps = false,           // для Yandex.Objects укажите true
     UseHttp2 = false            // Yandex.Objects позволяет работать по HTTP2, можете указать true
 })
 ```
@@ -117,7 +115,7 @@ else {
 ### Получение файла
 
 ```csharp
-StorageFile fileGetResult = await storageClient.GetFile(fileName, cancellationToken);
+S3File fileGetResult = await storageClient.GetFile(fileName, cancellationToken);
 if (fileGetResult) {
     Console.WriteLine($"Размер файла {fileGetResult.Length}, контент {fileGetResult.ContetType}");
     return await fileGetResult.GetStream(cancellationToken);

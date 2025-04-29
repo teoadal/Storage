@@ -1,5 +1,6 @@
-﻿namespace Storage;
+namespace Storage;
 
+[Obsolete("Use S3BucketSettings instead.")]
 public sealed class S3Settings
 {
 	public required string AccessKey { get; init; }
@@ -19,4 +20,21 @@ public sealed class S3Settings
 	public bool UseHttp2 { get; init; }
 
 	public required bool UseHttps { get; init; }
+
+	internal S3BucketSettings MapToBucketSettings()
+	{
+		var schema = UseHttps ? "https" : "http";
+		var port = Port.HasValue ? $":{Port}": string.Empty;
+
+		return new S3BucketSettings
+		{
+			AccessKey = AccessKey,
+			Bucket = Bucket,
+			Endpoint = $"{schema}:\\{EndPoint}{port}",
+			SecretKey = SecretKey,
+			Region = Region,
+			Service = Service,
+			UseHttp2 = UseHttp2	
+		};
+	}
 }

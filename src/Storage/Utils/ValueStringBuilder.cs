@@ -1,13 +1,13 @@
 namespace Storage.Utils;
 
-internal ref struct ValueStringBuilder(Span<char> initialBuffer, IArrayPool arrayPool)
+[DebuggerDisplay("{ToString()}")]
+internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 {
+	private static IArrayPool ArrayPool => DefaultArrayPool.Instance;
+
 	private Span<char> _buffer = initialBuffer;
 	private int _length = 0;
 	private char[]? _array = null;
-
-	// ReSharper disable once ReplaceWithPrimaryConstructorParameter
-	private readonly IArrayPool _arrayPool = arrayPool;
 
 	// ReSharper disable once ConvertToAutoPropertyWithPrivateSetter
 	public readonly int Length
@@ -54,7 +54,7 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer, IArrayPool arra
 	}
 
 	[SkipLocalsInit]
-	public void Append(DateTime value, string format)
+	public void Append(DateTimeOffset value, string format)
 	{
 		Span<char> buffer = stackalloc char[18];
 		var pos = _length;
@@ -161,7 +161,7 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer, IArrayPool arra
 		var toReturn = _array;
 		if (toReturn is not null)
 		{
-			ArrayPool<char>.Shared.Return(toReturn);
+			ArrayPool.Return(toReturn);
 		}
 	}
 
@@ -210,7 +210,7 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer, IArrayPool arra
 			(uint)(_length + additionalCapacityBeyondPos),
 			Math.Min((uint)_buffer.Length * 2, arrayMaxLength));
 
-		var poolArray = _arrayPool.Rent<char>(newCapacity);
+		var poolArray = ArrayPool.Rent<char>(newCapacity);
 
 		_buffer[.._length].CopyTo(poolArray);
 
@@ -218,7 +218,7 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer, IArrayPool arra
 		_buffer = _array = poolArray;
 		if (toReturn is not null)
 		{
-			_arrayPool.Return(toReturn);
+			ArrayPool.Return(toReturn);
 		}
 	}
 }

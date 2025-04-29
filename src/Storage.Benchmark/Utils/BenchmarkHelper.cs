@@ -1,4 +1,4 @@
-﻿using Amazon;
+using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using Microsoft.Extensions.Configuration;
@@ -11,46 +11,37 @@ internal static class BenchmarkHelper
 	public static readonly byte[] StreamBuffer = new byte[2048];
 
 	// ReSharper disable once InconsistentNaming
-	public static AmazonS3Client CreateAWSClient(S3Settings settings)
+	public static AmazonS3Client CreateAWSClient(S3BucketSettings settings)
 	{
-		var scheme = settings.UseHttps ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
-		var port = settings.Port.HasValue ? $":{settings.Port}" : string.Empty;
-
 		return new AmazonS3Client(
 			new BasicAWSCredentials(settings.AccessKey, settings.SecretKey),
 			new AmazonS3Config
 			{
 				RegionEndpoint = RegionEndpoint.USEast1,
-				ServiceURL = $"{scheme}://{settings.EndPoint}{port}",
+				ServiceURL = settings.Endpoint,
 				ForcePathStyle = true, // MUST be true to work correctly with MinIO server
 			});
 	}
 
-	public static IMinioClient CreateMinioClient(S3Settings settings)
+	public static IMinioClient CreateMinioClient(S3BucketSettings settings)
 	{
-		var builder = new MinioClient();
-		var port = settings.Port;
-		if (port.HasValue)
-		{
-			builder.WithEndpoint(settings.EndPoint, port.Value);
-		}
-		else
-		{
-			builder.WithEndpoint(settings.EndPoint);
-		}
+		Uri endpoint = new (settings.Endpoint);
 
+		var builder = new MinioClient();
+		
 		return builder
+			.WithEndpoint(endpoint)
 			.WithCredentials(settings.AccessKey, settings.SecretKey)
-			.WithSSL(settings.UseHttps)
+			
 			.Build();
 	}
 
-	public static S3Client CreateStoragesClient(S3Settings settings)
+	public static S3BucketClient CreateStoragesClient(S3BucketSettings settings)
 	{
-		return new S3Client(settings);
+		return new S3BucketClient(new HttpClient(), settings);
 	}
 
-	public static void EnsureBucketExists(S3Client client, CancellationToken cancellation)
+	public static void EnsureBucketExists(S3BucketClient client, CancellationToken cancellation)
 	{
 		if (client.IsBucketExists(cancellation).GetAwaiter().GetResult())
 		{
@@ -62,7 +53,7 @@ internal static class BenchmarkHelper
 
 	public static void EnsureFileExists(
 		IConfiguration config,
-		S3Client client,
+		S3BucketClient client,
 		string fileName,
 		CancellationToken cancellation)
 	{
@@ -76,7 +67,7 @@ internal static class BenchmarkHelper
 
 		if (!result)
 		{
-			throw new Exception("File isn't uploaded");
+			throw new FileLoadException("File isn't uploaded");
 		}
 	}
 
@@ -114,28 +105,28 @@ internal static class BenchmarkHelper
 		return result;
 	}
 
-	public static S3Settings ReadSettings(IConfiguration config)
+	public static S3BucketSettings ReadSettings(IConfiguration config)
 	{
-		var settings = config.GetRequiredSection("S3Storage").Get<S3Settings>();
-		if (settings == null || string.IsNullOrEmpty(settings.EndPoint))
+		var settings = config.GetRequiredSection("S3Storage").Get<S3BucketSettings>();
+		if (settings == null || string.IsNullOrEmpty(settings.Endpoint))
 		{
-			throw new Exception("S3Storage configuration is not found");
+			throw new UriFormatException("S3Storage configuration is not found");
 		}
 
 		var isContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER");
 		if (isContainer != null && bool.TryParse(isContainer, out var value) && value)
 		{
-			settings = new S3Settings
+			Uri endpointUri = new (settings.Endpoint);
+
+			settings = new S3BucketSettings
 			{
 				AccessKey = settings.AccessKey,
 				Bucket = settings.Bucket,
-				EndPoint = "host.docker.internal",
-				Port = settings.Port,
+				Endpoint = $"{endpointUri.Scheme}://host.docker.internal:{endpointUri.Port}",
 				Region = settings.Region,
 				SecretKey = settings.SecretKey,
 				Service = settings.Service,
 				UseHttp2 = settings.UseHttp2,
-				UseHttps = settings.UseHttps,
 			};
 		}
 

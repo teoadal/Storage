@@ -1,4 +1,4 @@
-﻿using Amazon.S3;
+using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 using Amazon.S3.Util;
@@ -24,7 +24,7 @@ public class S3Benchmark
 	private IAmazonS3 _amazonClient = null!;
 	private TransferUtility _amazonTransfer = null!;
 	private IMinioClient _minioClient = null!;
-	private S3Client _s3Client = null!;
+	private S3BucketClient _s3Client = null!;
 
 	[GlobalSetup]
 	public void Config()
@@ -87,7 +87,9 @@ public class S3Benchmark
 			new DeleteObjectRequest { BucketName = _bucket, Key = _fileId },
 			_cancellation);
 
-		return ++result;
+		result++;
+
+		return result;
 	}
 
 	[Benchmark]
@@ -151,7 +153,9 @@ public class S3Benchmark
 				.WithObject(_fileId),
 			_cancellation);
 
-		return ++result;
+		++result;
+
+		return result;
 	}
 
 	[Benchmark(Baseline = true)]
@@ -207,7 +211,9 @@ public class S3Benchmark
 		result++;
 
 		await _s3Client.DeleteFile(_fileId, _cancellation);
-		return ++result;
+
+		result++;
+		return result;
 	}
 
 	private static void ThrowException(string? message = null)

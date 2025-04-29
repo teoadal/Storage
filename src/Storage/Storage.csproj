@@ -43,14 +43,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Compile Update="S3Client.Buckets.cs">
-	    <DependentUpon>S3Client.cs</DependentUpon>
+	  <Compile Update="S3BucketClient.Buckets.cs">
+	    <DependentUpon>S3BucketClient.cs</DependentUpon>
 	  </Compile>
-	  <Compile Update="S3Client.Transport.cs">
-	    <DependentUpon>S3Client.cs</DependentUpon>
+	  <Compile Update="S3BucketClient.Transport.cs">
+	    <DependentUpon>S3BucketClient.cs</DependentUpon>
 	  </Compile>
-	  <Compile Update="S3Client.Multipart.cs">
-	    <DependentUpon>S3Client.cs</DependentUpon>
+	  <Compile Update="S3BucketClient.Multipart.cs">
+	    <DependentUpon>S3BucketClient.cs</DependentUpon>
 	  </Compile>
 	</ItemGroup>
 

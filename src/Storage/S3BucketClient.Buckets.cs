@@ -6,7 +6,7 @@ namespace Storage;
 /// <summary>
 /// Функции управления бакетом
 /// </summary>
-public sealed partial class S3Client
+public partial class S3BucketClient : IBucketOperations
 {
 	public async Task<bool> CreateBucket(CancellationToken ct)
 	{

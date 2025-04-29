@@ -5,23 +5,14 @@ namespace Storage;
 /// <summary>
 /// Transport functions
 /// </summary>
-public sealed partial class S3Client
+public partial class S3BucketClient
 {
 	[SkipLocalsInit]
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private HttpRequestMessage CreateRequest(HttpMethod method, string? fileName = null)
 	{
-		var url = new ValueStringBuilder(stackalloc char[512], ArrayPool);
-		url.Append(_bucket);
-
-		// ReSharper disable once InvertIf
-		if (!string.IsNullOrEmpty(fileName))
-		{
-			url.Append('/');
-			_httpDescription.AppendEncodedName(ref url, fileName);
-		}
-
-		return new HttpRequestMessage(method, new Uri(url.Flush(), UriKind.Absolute));
+		var url = UrlUtils.BuildFileUrl(_bucket, fileName);
+		return new HttpRequestMessage(method, new Uri(url, UriKind.Absolute));
 	}
 
 	private Task<HttpResponseMessage> Send(HttpRequestMessage request, string payloadHash, CancellationToken ct)
@@ -31,10 +22,10 @@ public sealed partial class S3Client
 			Errors.Disposed();
 		}
 
-		var now = DateTime.UtcNow;
+		var now = _timeProvider.GetUtcNow();
 
 		var headers = request.Headers;
-		headers.Add("host", _endpoint);
+		headers.Add("host", _host);
 		headers.Add("x-amz-content-sha256", payloadHash);
 		headers.Add("x-amz-date", now.ToString(Signature.Iso8601DateTime, CultureInfo.InvariantCulture));
 
@@ -43,8 +34,9 @@ public sealed partial class S3Client
 			request.Version = HttpVersion.Version20;
 		}
 
-		var signature = _signature.Calculate(request, payloadHash, S3Headers, now);
-		headers.TryAddWithoutValidation("Authorization", _httpDescription.BuildHeader(now, signature));
+		var signature = _signature.Calculate(request, payloadHash, now);
+
+		headers.TryAddWithoutValidation("Authorization", _headBuilder.BuildAuthorizationValue(now, signature));
 
 		return _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
 	}

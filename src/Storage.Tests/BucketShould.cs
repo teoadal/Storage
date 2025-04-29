@@ -1,9 +1,9 @@
-﻿namespace Storage.Tests;
+namespace Storage.Tests;
 
 public sealed class BucketShould(StorageFixture fixture) : IClassFixture<StorageFixture>
 {
 	private readonly CancellationToken _ct = CancellationToken.None;
-	private readonly S3Client _client = fixture.S3Client;
+	private readonly S3BucketClient _client = fixture.S3Client;
 
 	[Fact]
 	public async Task CreateBucket()
@@ -59,7 +59,7 @@ public sealed class BucketShould(StorageFixture fixture) : IClassFixture<Storage
 			.Should().NotThrowAsync();
 	}
 
-	private async Task DeleteTestBucket(S3Client client)
+	private async Task DeleteTestBucket(S3BucketClient client)
 	{
 		var bucketDeleteResult = await client.DeleteBucket(_ct);
 

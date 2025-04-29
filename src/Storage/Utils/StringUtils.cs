@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 
 namespace Storage.Utils;
 
@@ -33,7 +33,7 @@ internal static class StringUtils
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static int Format(ref Span<char> buffer, DateTime dateTime, string format)
+	public static int Format(ref Span<char> buffer, DateTimeOffset dateTime, string format)
 	{
 		return dateTime.TryFormat(buffer, out var written, format, CultureInfo.InvariantCulture)
 			? written

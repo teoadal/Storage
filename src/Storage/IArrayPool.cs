@@ -1,4 +1,4 @@
-﻿namespace Storage;
+namespace Storage;
 
 /// <summary>
 /// Интерфейс класса, который берёт массивы из пула и возвращает их в пул.

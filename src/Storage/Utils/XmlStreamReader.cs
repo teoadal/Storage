@@ -1,4 +1,4 @@
-﻿namespace Storage.Utils;
+namespace Storage.Utils;
 
 internal static class XmlStreamReader
 {
