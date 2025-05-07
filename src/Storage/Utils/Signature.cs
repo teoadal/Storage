@@ -5,7 +5,7 @@ namespace Storage.Utils;
 
 internal sealed class Signature(string region, string service, string secretKey)
 {
-	private static IArrayPool ArrayPool => DefaultArrayPool.Instance;
+	private readonly static IArrayPool s_arrayPool = DefaultArrayPool.Instance;
 
 	public const string Iso8601DateTime = "yyyyMMddTHHmmssZ";
 	public const string Iso8601Date = "yyyyMMdd";
@@ -186,7 +186,7 @@ internal sealed class Signature(string region, string service, string secretKey)
 	{
 		var count = Encoding.UTF8.GetByteCount(value);
 
-		var byteBuffer = ArrayPool.Rent<byte>(count);
+		var byteBuffer = s_arrayPool.Rent<byte>(count);
 
 		var encoded = Encoding.UTF8.GetBytes(value, byteBuffer);
 
@@ -201,7 +201,7 @@ internal sealed class Signature(string region, string service, string secretKey)
 			}
 		}
 
-		ArrayPool.Return(byteBuffer);
+		s_arrayPool.Return(byteBuffer);
 	}
 
 	[SkipLocalsInit]
@@ -225,14 +225,14 @@ internal sealed class Signature(string region, string service, string secretKey)
 	{
 		var count = Encoding.UTF8.GetByteCount(content);
 
-		var byteBuffer = ArrayPool.Rent<byte>(count);
+		var byteBuffer = s_arrayPool.Rent<byte>(count);
 
 		var encoded = Encoding.UTF8.GetBytes(content, byteBuffer);
 		var result = HMACSHA256.TryHashData(key, byteBuffer.AsSpan(0, encoded), buffer, out var written)
 			? written
 			: -1;
 
-		ArrayPool.Return(byteBuffer);
+		s_arrayPool.Return(byteBuffer);
 
 		return result;
 	}

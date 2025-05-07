@@ -5,7 +5,6 @@ namespace Storage.Utils;
 
 internal static class HashHelper
 {
-	public static IArrayPool ArrayPool => DefaultArrayPool.Instance;
 	public static readonly string EmptyPayloadHash = Sha256ToHex(string.Empty);
 
 	[SkipLocalsInit]
@@ -41,9 +40,11 @@ internal static class HashHelper
 	[SkipLocalsInit]
 	private static string Sha256ToHex(ReadOnlySpan<char> value)
 	{
+		var arrayPool = DefaultArrayPool.Instance;
+
 		var count = Encoding.UTF8.GetByteCount(value);
 
-		var byteBuffer = ArrayPool.Rent<byte>(count);
+		var byteBuffer = arrayPool.Rent<byte>(count);
 
 		var encoded = Encoding.UTF8.GetBytes(value, byteBuffer);
 		Span<byte> hashBuffer = stackalloc byte[64];
@@ -51,7 +52,7 @@ internal static class HashHelper
 			? ToHex(hashBuffer[..written])
 			: string.Empty;
 
-		ArrayPool.Return(byteBuffer);
+		arrayPool.Return(byteBuffer);
 
 		return result;
 	}

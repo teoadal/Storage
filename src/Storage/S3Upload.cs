@@ -110,7 +110,7 @@ public sealed class S3Upload : IDisposable
 
 		if (_parts.Length == _partCount)
 		{
-			CollectionUtils.Resize(ref _parts, DefaultArrayPool.Instance, _partCount * 2);
+			CollectionUtils.Resize(ref _parts, _arrayPool, _partCount * 2);
 		}
 
 		_parts[_partCount++] = partId;

@@ -3,7 +3,7 @@ namespace Storage.Utils;
 [DebuggerDisplay("{ToString()}")]
 internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 {
-	private static IArrayPool ArrayPool => DefaultArrayPool.Instance;
+	private readonly IArrayPool _arrayPool = DefaultArrayPool.Instance;
 
 	private Span<char> _buffer = initialBuffer;
 	private int _length = 0;
@@ -161,7 +161,7 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 		var toReturn = _array;
 		if (toReturn is not null)
 		{
-			ArrayPool.Return(toReturn);
+			_arrayPool.Return(toReturn);
 		}
 	}
 
@@ -210,7 +210,7 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 			(uint)(_length + additionalCapacityBeyondPos),
 			Math.Min((uint)_buffer.Length * 2, arrayMaxLength));
 
-		var poolArray = ArrayPool.Rent<char>(newCapacity);
+		var poolArray = _arrayPool.Rent<char>(newCapacity);
 
 		_buffer[.._length].CopyTo(poolArray);
 
@@ -218,7 +218,7 @@ internal ref struct ValueStringBuilder(Span<char> initialBuffer)
 		_buffer = _array = poolArray;
 		if (toReturn is not null)
 		{
-			ArrayPool.Return(toReturn);
+			_arrayPool.Return(toReturn);
 		}
 	}
 }

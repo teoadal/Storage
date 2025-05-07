@@ -13,7 +13,7 @@ public partial class S3BucketClient : IS3BucketClient, IDisposable
 {
 	internal const int DefaultPartSize = 5 * 1024 * 1024; // 5 Mb
 
-	private static IArrayPool ArrayPool => DefaultArrayPool.Instance;
+	private readonly IArrayPool _arrayPool = DefaultArrayPool.Instance;
 
 	private readonly string _bucket;
 	private readonly HttpClient _client;
@@ -281,7 +281,7 @@ public partial class S3BucketClient : IS3BucketClient, IDisposable
 		Stream data,
 		CancellationToken ct)
 	{
-		var buffer = ArrayPool.Rent<byte>((int)data.Length); // размер точно есть
+		var buffer = _arrayPool.Rent<byte>((int)data.Length); // размер точно есть
 		var dataSize = await data.ReadAsync(buffer, ct).ConfigureAwait(false);
 
 		var payloadHash = GetPayloadHash(buffer.AsSpan(0, dataSize));
@@ -299,7 +299,7 @@ public partial class S3BucketClient : IS3BucketClient, IDisposable
 			}
 			finally
 			{
-				ArrayPool.Return(buffer);
+				_arrayPool.Return(buffer);
 			}
 		}
 

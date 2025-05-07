@@ -2,7 +2,7 @@ namespace Storage;
 
 public sealed class DefaultArrayPool
 {
-    class ArrayPool : IArrayPool
+	class ArrayPool : IArrayPool
 	{
 		public T[] Rent<T>(int minimumLength) => ArrayPool<T>.Shared.Rent(minimumLength);
 		public void Return<T>(T[] array, bool clear = false) => ArrayPool<T>.Shared.Return(array, clear);
