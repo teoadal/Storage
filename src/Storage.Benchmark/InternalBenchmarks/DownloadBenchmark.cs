@@ -1,4 +1,4 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 using Storage.Benchmark.Utils;
 
 namespace Storage.Benchmark.InternalBenchmarks;
@@ -10,7 +10,7 @@ public class DownloadBenchmark
 {
 	private CancellationToken _cancellation;
 	private string _fileId = null!;
-	private S3Client _s3Client = null!;
+	private S3BucketClient _s3Client = null!;
 
 	[GlobalSetup]
 	public void Config()

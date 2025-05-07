@@ -1,5 +1,5 @@
-using System.Text;
 using Storage.Utils;
+using System.Text;
 using static Storage.Utils.HashHelper;
 
 namespace Storage;
@@ -7,7 +7,7 @@ namespace Storage;
 /// <summary>
 /// Функции управления multipart-загрузкой
 /// </summary>
-public sealed partial class S3Client
+public partial class S3BucketClient
 {
 	internal async Task<bool> MultipartAbort(string encodedFileName, string uploadId, CancellationToken ct)
 	{
@@ -69,18 +69,16 @@ public sealed partial class S3Client
 			.Append("</CompleteMultipartUpload>")
 			.Flush();
 
-		var payloadHash = GetPayloadHash(data, ArrayPool);
+		var payloadHash = GetPayloadHash(data);
 
 		HttpResponseMessage response;
 		using (var request = new HttpRequestMessage(
-			       HttpMethod.Post,
-			       $"{_bucket}/{encodedFileName}?uploadId={uploadId}"))
+				   HttpMethod.Post,
+				   $"{_bucket}/{encodedFileName}?uploadId={uploadId}"))
 		{
-			using (var content = new StringContent(data, Encoding.UTF8))
-			{
-				request.Content = content;
-				response = await Send(request, payloadHash, ct).ConfigureAwait(false);
-			}
+			using var content = new StringContent(data, Encoding.UTF8);
+			request.Content = content;
+			response = await Send(request, payloadHash, ct).ConfigureAwait(false);
 		}
 
 		var result = response is { IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK };
@@ -97,19 +95,17 @@ public sealed partial class S3Client
 		int partSize,
 		CancellationToken ct)
 	{
-		var payloadHash = GetPayloadHash(partData.AsSpan(0, partSize), ArrayPool);
+		var payloadHash = GetPayloadHash(partData.AsSpan(0, partSize));
 		var url = $"{_bucket}/{encodedFileName}?partNumber={partNumber}&uploadId={uploadId}";
 
 		HttpResponseMessage response;
 		using (var request = new HttpRequestMessage(HttpMethod.Put, url))
 		{
-			using (var content = new ByteArrayContent(partData, 0, partSize))
-			{
-				content.Headers.Add("content-length", partSize.ToString());
-				request.Content = content;
+			using var content = new ByteArrayContent(partData, 0, partSize);
+			content.Headers.Add("content-length", partSize.ToString());
+			request.Content = content;
 
-				response = await Send(request, payloadHash, ct).ConfigureAwait(false);
-			}
+			response = await Send(request, payloadHash, ct).ConfigureAwait(false);
 		}
 
 		var result = response is { IsSuccessStatusCode: true, StatusCode: HttpStatusCode.OK }
@@ -154,32 +150,33 @@ public sealed partial class S3Client
 		return false;
 	}
 
-	private async Task<string> MultipartStart(string encodedFileName, string contentType, CancellationToken ct)
+	private async Task<S3Upload> MultipartStart(string fileName, string contentType, CancellationToken ct)
 	{
+		var encodedFileName = UrlUtils.UrlEncodeName(fileName);
+
 		HttpResponseMessage response;
 		using (var request = new HttpRequestMessage(HttpMethod.Post, $"{_bucket}/{encodedFileName}?uploads"))
 		{
-			using (var content = new ByteArrayContent([]))
-			{
-				content.Headers.Add("content-type", contentType);
-				request.Content = content;
+			using var content = new ByteArrayContent([]);
+			content.Headers.Add("content-type", contentType);
+			request.Content = content;
 
-				response = await Send(request, EmptyPayloadHash, ct).ConfigureAwait(false);
-			}
+			response = await Send(request, EmptyPayloadHash, ct).ConfigureAwait(false);
 		}
 
 		if (response.StatusCode is HttpStatusCode.OK)
 		{
 			var responseStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-			var result = XmlStreamReader.ReadString(responseStream, "UploadId");
+			var uploadId = XmlStreamReader.ReadString(responseStream, "UploadId");
 
 			await responseStream.DisposeAsync().ConfigureAwait(false);
 			response.Dispose();
 
-			return result;
+			return new S3Upload(this, fileName, encodedFileName, uploadId);
 		}
 
 		Errors.UnexpectedResult(response);
-		return string.Empty;
+
+		return null;
 	}
 }

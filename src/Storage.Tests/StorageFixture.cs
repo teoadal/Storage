@@ -1,4 +1,4 @@
-﻿using AutoFixture;
+using AutoFixture;
 using DotNet.Testcontainers.Containers;
 
 namespace Storage.Tests;
@@ -18,14 +18,14 @@ public sealed class StorageFixture : IDisposable, IAsyncDisposable
 
 		Settings = TestHelper.CreateSettings(_container);
 		HttpClient = new HttpClient();
-		S3Client = new S3Client(Settings);
+		S3Client = new S3BucketClient(new HttpClient(), settings: Settings);
 
 		TestHelper.EnsureBucketExists(S3Client);
 	}
 
-	internal S3Settings Settings { get; }
+	internal S3BucketSettings Settings { get; }
 
-	internal S3Client S3Client { get; }
+	internal S3BucketClient S3Client { get; }
 
 	internal HttpClient HttpClient { get; }
 
